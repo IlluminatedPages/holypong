@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pong + Catechism (CCC)</title>
+  <style>
+    :root{
+      --bg:#0e0f13; --fg:#f2f5f7; --muted:#9aa3ac; --accent:#8ad0ff;
+      --panel:rgba(255,255,255,0.06); --panel-2:rgba(255,255,255,0.1);
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 20% 10%, #141824, #0b0c10 70%);
+      color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      display:grid; place-items:center;
+    }
+    .wrap{ width:min(100vw, 1100px); padding:16px; }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    header .title{ display:flex; gap:12px; align-items:center; }
+    .logo{ width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,#5bc0ff,#a2e5ff); box-shadow:0 0 20px #57bfff55; }
+    h1{ font-size:18px; margin:0; letter-spacing:.3px; font-weight:700; }
+    .sub{ color:var(--muted); font-size:12px; }
+
+    .hud{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .chip{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; background:var(--panel); border:1px solid var(--panel-2); font-size:12px; color:var(--muted); }
+    .chip b{ color:var(--fg); font-weight:700; letter-spacing:.4px; }
+
+    canvas{ width:100%; height:auto; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0) 30%);
+            border-radius:18px; border:1px solid var(--panel-2); box-shadow: 0 10px 40px rgba(0,0,0,.5) inset, 0 10px 30px rgba(0,0,0,.2); }
+
+    .overlay{ position:fixed; inset:0; display:none; place-items:center; padding:24px; background:rgba(0,0,0,0.5); backdrop-filter: blur(6px); }
+    .card{ max-width:min(640px, 92vw); background:rgba(20, 24, 32, 0.9); border:1px solid var(--panel-2); border-radius:18px; padding:20px 22px; box-shadow: 0 24px 80px rgba(0,0,0,.6); }
+    .card h2{ margin:0 0 6px; font-size:18px; color:var(--accent); }
+    .card blockquote{ margin:0; font-size:18px; line-height:1.5; color:#eaf6ff; }
+    .card .ref{ margin-top:10px; color:var(--muted); font-size:12px; letter-spacing:.3px; }
+    .card .btns{ display:flex; gap:10px; margin-top:14px; }
+    .btn{ padding:10px 14px; font-size:14px; border-radius:12px; background:var(--panel); border:1px solid var(--panel-2); color:var(--fg); cursor:pointer; }
+    .btn.primary{ background:linear-gradient(135deg, #57bfff33, #a2e5ff33); border-color:#86d8ff55; }
+
+    footer{ margin-top:10px; color:var(--muted); font-size:12px; display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    code.k{ background:var(--panel); padding:2px 8px; border-radius:8px; border:1px solid var(--panel-2); color:#d7e3ea; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Pong + Catechism</h1>
+          <div class="sub">After each scored point: Player → CCC quote (and +500 pts). CPU → St. Thomas Aquinas quote.</div>
+        </div>
+      </div>
+      <div class="hud">
+        <div class="chip">Mode: <b id="modeLabel">1P vs CPU</b></div>
+        <div class="chip">Score: <b><span id="scoreL">0</span> – <span id="scoreR">0</span></b></div>
+        <div class="chip">Points: <b id="points">0</b></div>
+      </div>
+    </header>
+
+    <canvas id="game" width="900" height="600" aria-label="Pong game canvas" role="img"></canvas>
+
+    <footer>
+      <div>
+        Move: <code class="k">W/S</code> • Pause: <code class="k">P</code> • Start/Resume: <code class="k">Space</code> • Reset: <code class="k">R</code>
+      </div>
+      <div>
+        Toggle: <code class="k">1</code> vs CPU • <code class="k">2</code> for 2‑Player
+      </div>
+    </footer>
+  </div>
+
+  <!-- Quote Overlay -->
+  <div class="overlay" id="quoteOverlay" aria-modal="true" role="dialog">
+    <div class="card">
+      <h2 id="quoteTitle">From the Catechism</h2>
+      <blockquote id="quoteText">…</blockquote>
+      <div class="ref" id="quoteRef">CCC ¶ —</div>
+      <div class="btns">
+        <button class="btn" id="resetBtn" title="Reset match to 0–0">Reset</button>
+        <button class="btn primary" id="continueBtn" title="Continue play (Space)">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (()=>{
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    // HUD elements
+    const scoreL = document.getElementById('scoreL');
+    const scoreR = document.getElementById('scoreR');
+    const pointsEl = document.getElementById('points');
+    const modeLabel = document.getElementById('modeLabel');
+
+    // Quote overlay
+    const overlay = document.getElementById('quoteOverlay');
+    const quoteText = document.getElementById('quoteText');
+    const quoteRef  = document.getElementById('quoteRef');
+    const quoteTitle= document.getElementById('quoteTitle');
+    const continueBtn = document.getElementById('continueBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Hi‑DPI support
+    function fitHiDPI(){
+      const ratio = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+      const cssW = canvas.clientWidth; const cssH = canvas.clientHeight;
+      canvas.width  = Math.round(cssW * ratio);
+      canvas.height = Math.round(cssH * ratio);
+      ctx.setTransform(ratio,0,0,ratio,0,0);
+    }
+    const ro = new ResizeObserver(()=>fitHiDPI());
+    ro.observe(canvas);
+
+    // Game constants
+    const PADDLE_W = 12, PADDLE_H = 100, BALL = 10;
+    const MAX_SCORE = 11;
+    const POINTS_PER_PLAYER_SCORE = 500;
+
+    // Quotes
+    const CCC_QUOTES = [
+      {t:"The desire for God is written in the human heart.", r:"CCC 27"},
+      {t:"The Eucharist is the source and summit of the Christian life.", r:"CCC 1324"},
+      {t:"Prayer is the raising of one's mind and heart to God.", r:"CCC 2559"},
+      {t:"Sin is an offense against reason, truth, and right conscience.", r:"CCC 1849"},
+      {t:"Charity is the virtue by which we love God above all things.", r:"CCC 1822"},
+      {t:"Faith is the virtue by which we believe in God and all he has said.", r:"CCC 1814"},
+      {t:"Hope is the virtue by which we desire the kingdom of heaven.", r:"CCC 1817"},
+      {t:"Prudence is right reason in action.", r:"CCC 1806"},
+      {t:"Freedom is the power to act or not to act.", r:"CCC 1731"},
+      {t:"Human dignity is rooted in our creation in the image of God.", r:"CCC 1700"},
+      {t:"Man is by nature and vocation a religious being.", r:"CCC 44"},
+      {t:"God's very being is love.", r:"CCC 221"},
+      {t:"The family is the original cell of social life.", r:"CCC 2207"},
+      {t:"The fruits of the Spirit include charity, joy, peace.", r:"CCC 1832"},
+      {t:"Baptism remits sins and gives new birth in the Holy Spirit.", r:"CCC 1262"},
+      {t:"The Holy Spirit is the interior Master of Christian prayer.", r:"CCC 2672"}
+    ];
+
+    // Short encouraging lines attributed to St. Thomas Aquinas (public domain works)
+    const AQUINAS_QUOTES = [
+      {t:"Faith has to do with things that are not seen and hope with things that are not at hand.", r:"Thomas Aquinas"},
+      {t:"Better to illuminate than merely to shine; to deliver to others contemplated truths than merely to contemplate.", r:"Thomas Aquinas"},
+      {t:"To love is to will the good of the other.", r:"Thomas Aquinas"},
+      {t:"The things that we love tell us what we are.", r:"Thomas Aquinas"},
+      {t:"Three things are necessary for the salvation of man: to know what he ought to believe; to know what he ought to desire; and to know what he ought to do.", r:"Thomas Aquinas"}
+    ];
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+      }
+      return arr;
+    }
+    let cccPool = shuffle(CCC_QUOTES.slice());
+    let aquinasPool = shuffle(AQUINAS_QUOTES.slice());
+    function nextCCC(){ if(cccPool.length===0) cccPool = shuffle(CCC_QUOTES.slice()); return cccPool.shift(); }
+    function nextAquinas(){ if(aquinasPool.length===0) aquinasPool = shuffle(AQUINAS_QUOTES.slice()); return aquinasPool.shift(); }
+
+    // Game state
+    const keys = new Set();
+    let mode = 1; // 1 = 1P vs CPU, 2 = 2P local
+
+    const state = {
+      l:{x:20, y:(canvas.height/2 - PADDLE_H/2), vy:0},
+      r:{x:canvas.width-20-PADDLE_W, y:(canvas.height/2 - PADDLE_H/2), vy:0},
+      ball:{x:canvas.width/2, y:canvas.height/2, vx:5, vy:2},
+      scoreL:0, scoreR:0,
+      userPoints:0,
+      running:false,
+      showMessage:true,
+      pendingServeDir: 0 // -1 serve to right, +1 serve to left
+    };
+
+    function resetBall(dir= (Math.random()<.5?-1:1)){
+      const speed = 5; // base speed after score
+      state.ball.x = canvas.width/2; state.ball.y = canvas.height/2;
+      state.ball.vx = speed * dir; state.ball.vy = (Math.random()*2-1)*2.5;
+    }
+    function resetPaddles(){
+      state.l.y = (canvas.height/2 - PADDLE_H/2);
+      state.r.y = (canvas.height/2 - PADDLE_H/2);
+      state.l.vy = state.r.vy = 0;
+    }
+    function newMatch(){
+      state.scoreL = state.scoreR = 0; state.userPoints = 0; updateHUD();
+      resetPaddles(); resetBall();
+      state.showMessage = true; state.running = false; draw();
+    }
+
+    function updateHUD(){
+      scoreL.textContent = state.scoreL; scoreR.textContent = state.scoreR;
+      pointsEl.textContent = state.userPoints;
+      modeLabel.textContent = (mode===1? '1P vs CPU' : '2‑Player');
+    }
+
+    // Controls
+    window.addEventListener('keydown', (e)=>{
+      const k = e.key.toLowerCase();
+      if(['w','s','arrowup','arrowdown','p','r',' ','1','2'].includes(k)) e.preventDefault();
+      if(k==='p'){ togglePause(); return; }
+      if(k==='r'){ newMatch(); return; }
+      if(k===' '){ startOrResume(true); return; }
+      if(k==='1'){ mode=1; updateHUD(); return; }
+      if(k==='2'){ mode=2; updateHUD(); return; }
+      keys.add(k);
+    });
+    window.addEventListener('keyup', (e)=>{ keys.delete(e.key.toLowerCase()); });
+
+    continueBtn.addEventListener('click', ()=>{ hideQuote(); continueAfterQuote(); });
+    resetBtn.addEventListener('click', ()=>{ hideQuote(); newMatch(); });
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay){ hideQuote(); continueAfterQuote(); }});
+
+    function continueAfterQuote(){
+      if(state.pendingServeDir!==0){ resetBall(state.pendingServeDir); state.pendingServeDir=0; }
+      startOrResume(true);
+    }
+
+    function showQuote(kind){
+      // kind: 'ccc' or 'aquinas'
+      let q;
+      if(kind==='ccc'){
+        q = nextCCC();
+        quoteTitle.textContent = 'From the Catechism';
+        quoteRef.textContent = q.r;
+      } else {
+        q = nextAquinas();
+        quoteTitle.textContent = 'From St. Thomas Aquinas';
+        quoteRef.textContent = q.r;
+      }
+      quoteText.textContent = q.t;
+      overlay.style.display = 'grid';
+    }
+    function hideQuote(){ overlay.style.display = 'none'; }
+
+    function startOrResume(force=false){
+      if(overlay.style.display==='grid'){ hideQuote(); }
+      if(!state.running){ state.running = true; state.showMessage = false; last=performance.now(); requestAnimationFrame(loop); }
+    }
+    function togglePause(){ state.running = !state.running; if(state.running){ last=performance.now(); requestAnimationFrame(loop); } else { draw(); } }
+
+    // Helpers
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+    function aiMove(){
+      const target = state.ball.y - PADDLE_H/2;
+      const speed = 5.0; // AI paddle speed
+      if(Math.abs(target - state.r.y) > 2){
+        state.r.y += Math.sign(target - state.r.y) * speed;
+      }
+      state.r.y = clamp(state.r.y, 10, canvas.height - PADDLE_H - 10);
+    }
+
+    function playerMove(){
+      const speed = 6.5;
+      if(keys.has('w')) state.l.y -= speed;
+      if(keys.has('s')) state.l.y += speed;
+      state.l.y = clamp(state.l.y, 10, canvas.height - PADDLE_H - 10);
+
+      if(mode===2){
+        if(keys.has('arrowup')) state.r.y -= speed;
+        if(keys.has('arrowdown')) state.r.y += speed;
+        state.r.y = clamp(state.r.y, 10, canvas.height - PADDLE_H - 10);
+      } else {
+        aiMove();
+      }
+    }
+
+    // Collision helpers
+    function rect(x,y,w,h){ return {x,y,w,h}; }
+    function intersects(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
+    function onPaddleHit(p){
+      // Reflect X and tweak Y based on impact point
+      const ball = state.ball;
+      const padCenter = p.y + PADDLE_H/2;
+      const dy = (ball.y - padCenter) / (PADDLE_H/2); // -1..1
+      const speed = Math.hypot(ball.vx, ball.vy) * 1.03; // slight acceleration per hit
+      const angle = dy * 0.7; // max ~40deg
+      const dir = (ball.x < canvas.width/2) ? 1 : -1; // send towards opponent
+      ball.vx = Math.cos(angle) * speed * dir;
+      ball.vy = Math.sin(angle) * speed;
+    }
+
+    // Drawing
+    function drawCourt(){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 4; ctx.setLineDash([10, 14]);
+      ctx.beginPath(); ctx.moveTo(canvas.width/2, 20); ctx.lineTo(canvas.width/2, canvas.height-20); ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(138, 208, 255, 0.20)';
+      ctx.lineWidth = 2; ctx.strokeRect(8,8, canvas.width-16, canvas.height-16);
+      ctx.restore();
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawCourt();
+      // Paddles
+      ctx.fillStyle = 'rgba(240,245,250,0.95)';
+      ctx.fillRect(state.l.x, state.l.y, PADDLE_W, PADDLE_H);
+      ctx.fillRect(state.r.x, state.r.y, PADDLE_W, PADDLE_H);
+      // Ball
+      ctx.beginPath(); ctx.arc(state.ball.x, state.ball.y, BALL, 0, Math.PI*2);
+      ctx.fill();
+
+      // If paused/showMessage, draw center instructions
+      if(!state.running){
+        ctx.save();
+        ctx.textAlign='center';
+        ctx.fillStyle='rgba(234,246,255,0.9)';
+        ctx.font='700 28px ui-sans-serif, system-ui';
+        const midX = canvas.width/2, midY = canvas.height/2;
+        ctx.fillText('P O N G  +  C C C', midX, midY-40);
+        ctx.font='14px ui-sans-serif, system-ui';
+        ctx.fillStyle='rgba(200,220,235,0.9)';
+        ctx.fillText('W/S to move • Space to start • P to pause • 1: vs CPU • 2: 2‑Player', midX, midY-10);
+        ctx.fillText('After each point: Player → CCC quote (+500 pts). CPU → Aquinas quote.', midX, midY+16);
+        ctx.restore();
+      }
+
+      // Game over banner
+      if(state.scoreL>=MAX_SCORE || state.scoreR>=MAX_SCORE){
+        ctx.save();
+        ctx.textAlign='center';
+        ctx.fillStyle='rgba(255,255,255,0.95)';
+        ctx.font='700 32px ui-sans-serif, system-ui';
+        const msg = (state.scoreL>state.scoreR? 'Left Player Wins the Match!' : 'Right Player Wins the Match!');
+        ctx.fillText(msg, canvas.width/2, canvas.height/2);
+        ctx.font='14px ui-sans-serif, system-ui';
+        ctx.fillStyle='rgba(220,235,245,0.9)';
+        ctx.fillText('Press R to restart', canvas.width/2, canvas.height/2+28);
+        ctx.restore();
+      }
+    }
+
+    // Main loop
+    let last = performance.now();
+    function loop(now){
+      if(!state.running) { draw(); return; }
+      const dt = Math.min(32, now-last); last = now;
+
+      // Move paddles
+      playerMove();
+
+      // Move ball
+      state.ball.x += state.ball.vx; state.ball.y += state.ball.vy;
+
+      // Wall collisions
+      if(state.ball.y < 18 + BALL){ state.ball.y = 18 + BALL; state.ball.vy *= -1; }
+      if(state.ball.y > canvas.height-18 - BALL){ state.ball.y = canvas.height-18 - BALL; state.ball.vy *= -1; }
+
+      // Paddle collisions
+      const ballRect = rect(state.ball.x-BALL, state.ball.y-BALL, BALL*2, BALL*2);
+      const lRect = rect(state.l.x, state.l.y, PADDLE_W, PADDLE_H);
+      const rRect = rect(state.r.x, state.r.y, PADDLE_W, PADDLE_H);
+      if(state.ball.vx < 0 && intersects(ballRect, lRect)){
+        state.ball.x = state.l.x + PADDLE_W + BALL; // prevent sticking
+        onPaddleHit(state.l);
+      } else if(state.ball.vx > 0 && intersects(ballRect, rRect)){
+        state.ball.x = state.r.x - BALL; // prevent sticking
+        onPaddleHit(state.r);
+      }
+
+      // Scoring (point ends → show quote overlay with Continue/Reset)
+      if(state.ball.x < -BALL*2){
+        // AI scores a point
+        state.scoreR++; updateHUD(); resetPaddles();
+        state.pendingServeDir = 1; // serve towards AI (ball to the right)
+        state.running=false; showQuote('aquinas');
+      }
+      if(state.ball.x > canvas.width + BALL*2){
+        // Player scores a point
+        state.scoreL++; state.userPoints += POINTS_PER_PLAYER_SCORE; updateHUD(); resetPaddles();
+        state.pendingServeDir = -1; // serve towards player (ball to the left)
+        state.running=false; showQuote('ccc');
+      }
+
+      // End condition (still allows quotes on point, but stops loop after drawing banner)
+      if(state.scoreL>=MAX_SCORE || state.scoreR>=MAX_SCORE){ state.running=false; }
+
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Start paused
+    fitHiDPI(); newMatch();
+  })();
+  </script>
+</body>
+</html>
