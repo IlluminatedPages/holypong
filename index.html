@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>The Field of Battle · v1.4</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --gold:#c9a84c;--dg:#7a5f1a;--dimgold:rgba(201,168,76,0.18);
+  --vice:#8b1a1a;--fg:#f0ece0;--muted:#7a7060;
+  --panel:rgba(255,255,255,0.05);--panel2:rgba(255,255,255,0.09);
+  --radius:12px;
+}
+html{height:100%;}
+body{
+  min-height:100%;background:#06070a;color:var(--fg);
+  font-family:'Palatino Linotype',Palatino,Georgia,serif;
+  display:flex;flex-direction:column;align-items:center;
+  /* leave space for fixed bottom controls on mobile */
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+
+/* ── SHARED FULL-SCREEN PAGES ── */
+.page{
+  position:fixed;inset:0;z-index:200;display:flex;align-items:center;
+  justify-content:center;padding:20px;
+  background:radial-gradient(ellipse 900px 600px at 50% 35%,#11131c,#05060a 85%);
+  overflow-y:auto;
+}
+.page.hidden{display:none;}
+.pcard{
+  width:min(480px,94vw);background:rgba(12,13,18,0.97);
+  border:1px solid rgba(201,168,76,0.3);border-radius:20px;
+  padding:28px 24px;box-shadow:0 0 60px rgba(201,168,76,0.07);
+  text-align:center;
+}
+.pcard .cross{font-size:40px;color:var(--gold);line-height:1;margin-bottom:8px;}
+.pcard h1{font-size:22px;color:var(--gold);margin-bottom:2px;letter-spacing:.4px;}
+.pcard .psub{font-size:11px;color:var(--muted);font-family:ui-sans-serif;margin-bottom:5px;}
+.pcard .ver{display:inline-block;font-size:9px;color:var(--dg);font-family:ui-sans-serif;
+  border:1px solid rgba(201,168,76,0.22);padding:1px 7px;border-radius:6px;margin-bottom:16px;}
+.notice{text-align:left;background:rgba(255,255,255,0.03);border:1px solid var(--panel2);
+  border-radius:10px;padding:12px 14px;font-family:ui-sans-serif;font-size:12px;
+  line-height:1.7;color:#cfc8b6;margin-bottom:16px;}
+.notice strong{color:var(--gold);}
+.notice ul{margin:5px 0 0;padding-left:15px;}
+.notice li{margin-bottom:3px;}
+.page-btn{
+  width:100%;padding:12px;font-size:14px;border-radius:11px;cursor:pointer;
+  font-family:ui-sans-serif;background:var(--dimgold);
+  border:1px solid rgba(201,168,76,0.45);color:var(--gold);
+  margin-bottom:8px;transition:.15s;
+}
+.page-btn:hover,.page-btn:active{background:rgba(201,168,76,0.3);}
+.page-fine{font-size:10px;color:var(--muted);font-family:ui-sans-serif;}
+
+/* difficulty picker */
+.diff-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px;}
+.diff-btn{
+  flex:1;max-width:120px;padding:10px 6px;border-radius:10px;font-size:13px;
+  font-family:ui-sans-serif;cursor:pointer;border:1px solid var(--panel2);
+  background:var(--panel);color:var(--muted);transition:.15s;
+}
+.diff-btn.active,.diff-btn:active{background:var(--dimgold);border-color:rgba(201,168,76,0.5);color:var(--gold);}
+.diff-desc{font-size:11px;color:var(--muted);font-family:ui-sans-serif;min-height:32px;margin-bottom:14px;line-height:1.5;}
+
+/* ── GAME WRAPPER ── */
+#gameWrap{
+  display:none;flex-direction:column;align-items:center;
+  width:100%;max-width:520px;padding:8px 10px;
+  /* on mobile, pad bottom so fixed controls don't cover canvas */
+  padding-bottom:130px;
+}
+@media(min-width:600px){#gameWrap{padding-bottom:10px;}}
+
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:6px;flex-wrap:wrap;gap:5px;}
+.brand{display:flex;align-items:center;gap:6px;}
+.brand-cross{font-size:16px;color:var(--gold);}
+.brand-name{font-size:14px;color:var(--gold);font-weight:700;letter-spacing:.3px;}
+.brand-ver{font-size:9px;color:var(--dg);font-family:ui-sans-serif;border:1px solid rgba(201,168,76,0.2);padding:1px 4px;border-radius:5px;}
+.chips{display:flex;gap:4px;flex-wrap:wrap;}
+.chip{padding:3px 8px;border-radius:7px;background:var(--panel);border:1px solid var(--panel2);font-size:10px;color:var(--muted);font-family:ui-sans-serif;}
+.chip b{color:var(--fg);}
+.chip.gc{background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.3);}
+.chip.gc b{color:var(--gold);}
+
+/* Canvas */
+canvas{
+  width:100%;border-radius:14px;border:1px solid rgba(201,168,76,0.22);
+  box-shadow:0 0 50px rgba(0,0,0,0.7) inset,0 0 14px rgba(201,168,76,0.04);
+  display:block;touch-action:none;
+}
+
+/* Desktop control row */
+.ctrl-row{
+  display:none;justify-content:space-between;align-items:center;
+  width:100%;margin-top:7px;flex-wrap:wrap;gap:6px;
+}
+@media(min-width:600px){.ctrl-row{display:flex;}}
+.cbtn{
+  padding:5px 11px;border-radius:8px;background:var(--panel);border:1px solid var(--panel2);
+  color:var(--muted);font-size:11px;font-family:ui-sans-serif;cursor:pointer;transition:.12s;
+}
+.cbtn:hover,.cbtn:active{border-color:rgba(201,168,76,0.4);color:var(--gold);}
+.cbtn.on{background:var(--dimgold);border-color:rgba(201,168,76,0.5);color:var(--gold);}
+code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px solid var(--panel2);color:#c8bfa0;font-size:10px;}
+.key-hint{font-size:10px;color:var(--muted);font-family:ui-sans-serif;}
+
+/* ── MOBILE FIXED CONTROLS ── */
+#mobileControls{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:rgba(6,7,10,0.96);border-top:1px solid var(--panel2);
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+}
+@media(max-width:599px){#mobileControls{display:block;}}
+.mob-top{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+.mob-arrow-row{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.mob-arrow{
+  flex:1;max-width:120px;padding:14px 0;font-size:22px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--panel2);color:var(--fg);
+  cursor:pointer;text-align:center;user-select:none;transition:.1s;
+  -webkit-user-select:none;
+}
+.mob-arrow:active{background:var(--dimgold);border-color:rgba(201,168,76,0.5);}
+.mob-btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;flex:1;}
+.mbtn{
+  padding:7px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--panel2);
+  color:var(--muted);font-size:10px;font-family:ui-sans-serif;cursor:pointer;
+  white-space:nowrap;transition:.12s;
+}
+.mbtn:active{border-color:rgba(201,168,76,0.5);color:var(--gold);}
+.mbtn.on{background:var(--dimgold);border-color:rgba(201,168,76,0.5);color:var(--gold);}
+
+/* ── OVERLAYS (quote, guide, difficulty mid-game) ── */
+.overlay{
+  position:fixed;inset:0;display:none;place-items:center;
+  padding:20px;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:150;
+  overflow-y:auto;
+}
+.overlay.show{display:grid;}
+.ocard{
+  width:min(560px,94vw);background:rgba(10,11,16,0.98);
+  border:1px solid rgba(201,168,76,0.32);border-radius:16px;
+  padding:20px 20px 16px;max-height:90vh;overflow-y:auto;
+}
+.ocard h2{font-size:15px;color:var(--gold);margin-bottom:8px;letter-spacing:.3px;}
+.ocard blockquote{font-size:15px;line-height:1.65;color:#ede8d8;font-style:italic;}
+.ocard .ref{margin-top:8px;color:var(--muted);font-size:11px;font-family:ui-sans-serif;}
+.obtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.obtn{
+  padding:9px 14px;font-size:12px;border-radius:9px;background:var(--panel);
+  border:1px solid var(--panel2);color:var(--fg);cursor:pointer;font-family:ui-sans-serif;
+}
+.obtn.p{background:var(--dimgold);border-color:rgba(201,168,76,0.45);color:var(--gold);}
+.obtn:active{opacity:.8;}
+
+/* Guide styles */
+.guide-section{margin-bottom:14px;}
+.guide-section h3{font-size:12px;font-family:ui-sans-serif;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.guide-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-family:ui-sans-serif;}
+.guide-orb{width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:1px;}
+.guide-text{flex:1;}
+.guide-label{font-size:12px;font-weight:600;margin-bottom:1px;}
+.guide-desc{font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* Mid-game difficulty overlay */
+#diffOverlay .ocard{text-align:center;}
+#diffOverlay .diff-row{justify-content:center;}
+</style>
+</head>
+<body>
+
+<!-- ══════════ PAGE 1: GATE ══════════ -->
+<div class="page" id="pageGate">
+  <div class="pcard">
+    <div class="cross">&#10013;</div>
+    <h1>The Field of Battle</h1>
+    <div class="psub">Virtues &amp; Vices · A Catholic Pong Experience</div>
+    <div class="ver">v1.4 Preview Build</div>
+    <div class="notice">
+      <strong>A courtesy notice before you begin.</strong>
+      <ul>
+        <li>This runs <strong>entirely locally on your device</strong>, inside your browser.</li>
+        <li>No account, login, or internet connection required.</li>
+        <li><strong>Nothing is collected, stored, or sent anywhere.</strong></li>
+        <li>As a preview build, you may encounter rough edges.</li>
+        <li>Background music and sound effects will play — adjust your volume first.</li>
+      </ul>
+    </div>
+    <button class="page-btn" id="gateBtn">&#10013;&nbsp; I understand — continue</button>
+    <div class="page-fine">By proceeding you acknowledge this is a local preview build.</div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE 2: DIFFICULTY ══════════ -->
+<div class="page hidden" id="pageDiff">
+  <div class="pcard">
+    <div class="cross">&#9876;</div>
+    <h1>Choose Your Difficulty</h1>
+    <div class="psub">You can change this at any time during play</div>
+    <div class="ver">v1.4</div>
+    <div class="diff-row" id="diffPickerGate">
+      <button class="diff-btn" data-diff="easy">Easy</button>
+      <button class="diff-btn active" data-diff="normal">Normal</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+    </div>
+    <div class="diff-desc" id="diffDescGate">CPU tracks the ball with moderate accuracy. A fair challenge.</div>
+    <button class="page-btn" id="diffConfirmBtn">Enter the Field</button>
+    <div class="page-fine">First to 11 points wins the match.</div>
+  </div>
+</div>
+
+<!-- ══════════ GAME ══════════ -->
+<div id="gameWrap">
+  <div class="hud">
+    <div class="brand">
+      <span class="brand-cross">&#10013;</span>
+      <span class="brand-name">The Field of Battle</span>
+      <span class="brand-ver">v1.4</span>
+    </div>
+    <div class="chips">
+      <div class="chip">Score <b><span id="scoreP">0</span>–<span id="scoreC">0</span></b></div>
+      <div class="chip">Pts <b id="pts">0</b></div>
+      <div class="chip gc">Streak <b id="streak">0</b> <b id="multi"></b></div>
+      <div class="chip" id="diffChip">Normal</div>
+    </div>
+  </div>
+
+  <canvas id="game" width="480" height="700"></canvas>
+
+  <!-- Desktop controls -->
+  <div class="ctrl-row">
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      <button class="cbtn" id="dBtnFlip">Flip sides</button>
+      <button class="cbtn" id="dBtnDiff">Difficulty</button>
+      <button class="cbtn" id="dBtnMute">♪ Music</button>
+      <button class="cbtn" id="dBtn2P">2-Player</button>
+      <button class="cbtn" id="dBtnGuide">View Guide</button>
+    </div>
+    <div class="key-hint">
+      <code class="k">←→</code> move &nbsp;
+      <code class="k">P</code> pause &nbsp;
+      <code class="k">Space</code> start &nbsp;
+      <code class="k">R</code> reset
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MOBILE FIXED CONTROLS ══════════ -->
+<div id="mobileControls">
+  <div class="mob-top">
+    <div class="mob-btns">
+      <button class="mbtn" id="mBtnStart">▶ Start</button>
+      <button class="mbtn" id="mBtnPause">⏸ Pause</button>
+      <button class="mbtn" id="mBtnReset">↺ Reset</button>
+      <button class="mbtn" id="mBtnFlip">⇅ Flip</button>
+      <button class="mbtn" id="mBtnMute">♪ Music</button>
+      <button class="mbtn" id="mBtnDiff">Difficulty</button>
+      <button class="mbtn" id="mBtnGuide">📖 Guide</button>
+    </div>
+  </div>
+  <div class="mob-arrow-row">
+    <button class="mob-arrow" id="arrowLeft">&#8592;</button>
+    <div style="text-align:center;font-size:10px;color:var(--muted);font-family:ui-sans-serif;line-height:1.4;">
+      Hold to move<br/>your paddle
+    </div>
+    <button class="mob-arrow" id="arrowRight">&#8594;</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAYS ══════════ -->
+
+<!-- Quote -->
+<div class="overlay" id="quoteOverlay">
+  <div class="ocard">
+    <h2 id="qTitle">From the Catechism</h2>
+    <blockquote id="qText">…</blockquote>
+    <div class="ref" id="qRef"></div>
+    <div class="obtns">
+      <button class="obtn" id="qReset">Reset &nbsp;<code class="k">R</code></button>
+      <button class="obtn p" id="qContinue">Continue &nbsp;<code class="k">Space</code></button>
+    </div>
+  </div>
+</div>
+
+<!-- Guide -->
+<div class="overlay" id="guideOverlay">
+  <div class="ocard">
+    <h2>&#10013; Virtues &amp; Vices Guide</h2>
+    <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+      Orbs appear mid-court and are activated when the ball passes through them.
+      <strong style="color:var(--gold);">Effects apply only to the last player who touched the ball.</strong>
+      Gold orbs grant Virtues (buffs). Crimson orbs carry Vices (debuffs).
+    </p>
+
+    <div class="guide-section">
+      <h3>&#9830; Virtues — Gold Orbs</h3>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#c9a84c22;border:2px solid #c9a84c;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#c9a84c;">Prudence</div>
+        <div class="guide-desc">Slows the ball for 5 seconds — right reason in action gives you time to think.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#e8c86a22;border:2px solid #e8c86a;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e8c86a;">Fortitude</div>
+        <div class="guide-desc">Grows your paddle for 5 seconds — courage and strength in battle.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#a0c87822;border:2px solid #a0c878;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#a0c878;">Justice</div>
+        <div class="guide-desc">Shrinks the CPU/opponent paddle for 4 seconds — giving each their due.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#e88c5022;border:2px solid #e88c50;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e88c50;">Charity</div>
+        <div class="guide-desc">Doubles your points for the next 4 seconds — love overflows in generosity.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#60b8e022;border:2px solid #60b8e0;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#60b8e0;">Hope</div>
+        <div class="guide-desc">Shields your streak for 6 seconds — if CPU scores while active, your streak is preserved.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#d0d0d022;border:2px solid #d0d0d0;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#d0d0d0;">Faith</div>
+        <div class="guide-desc">Shows a subtle aim guide on the ball for 5 seconds — faith illuminates the path.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#88c8c022;border:2px solid #88c8c0;">&#9670;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#88c8c0;">Temperance</div>
+        <div class="guide-desc">Instantly cleanses all active Vice debuffs — moderation restores right order.</div></div>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <h3>&#9830; Vices — Crimson Orbs</h3>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#8b1a1a33;border:2px solid #8b1a1a;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Sloth</div>
+        <div class="guide-desc">Slows your paddle movement for 4 seconds — laziness dulls your response.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#a0001a33;border:2px solid #a0001a;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Pride</div>
+        <div class="guide-desc">Shrinks your paddle for 4 seconds — pride comes before a fall.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#cc330033;border:2px solid #cc3300;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Wrath</div>
+        <div class="guide-desc">Speeds the ball dangerously for 4 seconds — wrath brings chaos to the field.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#7a005033;border:2px solid #7a0050;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Envy</div>
+        <div class="guide-desc">Gives the CPU a scoring bonus for 5 seconds — envy benefits your opponent.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#88330033;border:2px solid #883300;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Gluttony</div>
+        <div class="guide-desc">Bloats your paddle beyond control for 4 seconds — excess becomes a burden.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#60008033;border:2px solid #600080;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Lust</div>
+        <div class="guide-desc">Inverts your left/right controls for 3.5 seconds — disordered desire confuses the will.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-orb" style="background:#c0400033;border:2px solid #c04000;">&#10005;</div>
+        <div class="guide-text"><div class="guide-label" style="color:#e05050;">Greed</div>
+        <div class="guide-desc">Steals 200 points immediately — greed takes what it should not have.</div></div>
+      </div>
+    </div>
+
+    <div class="obtns">
+      <button class="obtn p" id="guideClose">Close Guide</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mid-game Difficulty -->
+<div class="overlay" id="diffOverlay">
+  <div class="ocard" style="text-align:center;">
+    <h2>&#9876; Change Difficulty</h2>
+    <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin:8px 0 14px;">Takes effect immediately on next serve.</p>
+    <div class="diff-row" id="diffPickerMid">
+      <button class="diff-btn" data-diff="easy">Easy</button>
+      <button class="diff-btn active" data-diff="normal">Normal</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+    </div>
+    <div class="diff-desc" id="diffDescMid">CPU tracks the ball with moderate accuracy.</div>
+    <div class="obtns" style="justify-content:center;">
+      <button class="obtn p" id="diffMidClose">Confirm &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+
+/* ═══ AUDIO ═══ */
+let AC=null,musicMuted=false,musicTimeout=null;
+function ac(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
+function resumeAC(){if(AC&&AC.state==='suspended')AC.resume();}
+
+function startMusic(){
+  if(musicMuted)return;
+  stopMusic();
+  const a=ac();
+  const mg=a.createGain();mg.gain.value=0.11;mg.connect(a.destination);
+  const T=1.1; // slower tempo
+  const sc=[146.83,164.81,174.61,196,220,246.94,261.63,293.66,329.63,349.23,392];
+  const mel=[0,2,4,5,4,2,0,0,3,5,7,8,7,5,3,2,0,2,4,5,7,5,4,2,0,0,3,2,0,0,0,0];
+  const bas=[0,0,5,5,0,0,5,5,3,3,8,8,3,3,8,8,0,0,5,5,7,7,5,5,0,0,3,3,0,0,0,0];
+  function note(f,s,d,v,tp='sine'){
+    const o=a.createOscillator(),g=a.createGain();
+    o.type=tp;o.frequency.setValueAtTime(f,s);
+    g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+0.04);
+    g.gain.linearRampToValueAtTime(v*0.6,s+d*0.5);g.gain.linearRampToValueAtTime(0,s+d-0.03);
+    o.connect(g);g.connect(mg);o.start(s);o.stop(s+d);
+  }
+  function sched(t){
+    for(let i=0;i<mel.length;i++){
+      const s=t+i*T;
+      note(sc[mel[i]]*2,s,T*0.82,0.45);
+      if(i%4===0)note(sc[bas[i]],s,T*1.7,0.28,'triangle');
+      if(i%8===0)note(sc[0]*0.5,s,T*8,0.07);
+    }
+    return t+mel.length*T;
+  }
+  let t=a.currentTime+0.1;
+  function loop(){t=sched(t);musicTimeout=setTimeout(loop,(t-a.currentTime-1)*1000);}
+  loop();
+}
+function stopMusic(){if(musicTimeout){clearTimeout(musicTimeout);musicTimeout=null;}}
+function toggleMusic(){
+  musicMuted=!musicMuted;
+  [dBtn('dBtnMute'),mBtn('mBtnMute')].forEach(b=>{if(b){b.textContent=musicMuted?'♪ Off':'♪ Music';b.classList.toggle('on',musicMuted);}});
+  musicMuted?stopMusic():startMusic();
+}
+function sfx(type){
+  try{
+    const a=ac(),now=a.currentTime;
+    const pairs={
+      paddle:[[320,200,0.06,'square',0.16]],
+      wall:[[180,180,0.05,'sine',0.09]],
+      score:[[523,0,'sine'],[659,0.1,'sine'],[784,0.2,'sine'],[1047,0.3,'sine']],
+      lose:[[392,0,'triangle'],[349,0.12,'triangle'],[311,0.24,'triangle'],[262,0.36,'triangle']],
+    };
+    if(type==='paddle'||type==='wall'){
+      const[f1,f2,d,tp,vol]=pairs[type][0];
+      const o=a.createOscillator(),g=a.createGain();
+      o.type=tp;o.frequency.setValueAtTime(f1,now);if(f2)o.frequency.linearRampToValueAtTime(f2,now+d);
+      g.gain.setValueAtTime(vol,now);g.gain.linearRampToValueAtTime(0,now+d+0.02);
+      o.connect(g);g.connect(a.destination);o.start(now);o.stop(now+d+0.03);
+    } else if(type==='virtue'){
+      [440,554,659,880].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.16,now+i*0.07);g.gain.linearRampToValueAtTime(0,now+i*0.07+0.13);o.connect(g);g.connect(a.destination);o.start(now+i*0.07);o.stop(now+i*0.07+0.15);});
+    } else if(type==='vice'){
+      [330,311,277,220].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.type='sawtooth';o.frequency.value=f;g.gain.setValueAtTime(0.12,now+i*0.07);g.gain.linearRampToValueAtTime(0,now+i*0.07+0.11);o.connect(g);g.connect(a.destination);o.start(now+i*0.07);o.stop(now+i*0.07+0.13);});
+    } else if(type==='score'||type==='lose'){
+      const arr=pairs[type];
+      arr.forEach(([f,del,tp])=>{const o=a.createOscillator(),g=a.createGain();o.type=tp;o.frequency.value=f;g.gain.setValueAtTime(0.18,now+del);g.gain.linearRampToValueAtTime(0,now+del+0.16);o.connect(g);g.connect(a.destination);o.start(now+del);o.stop(now+del+0.18);});
+    }
+  }catch(e){}
+}
+
+/* ═══ DIFFICULTY ═══ */
+let difficulty='normal';
+const DIFF_DESC={
+  easy:'CPU moves slowly with wide margin for error. Great for beginners.',
+  normal:'CPU tracks the ball with moderate accuracy. A fair challenge.',
+  hard:'CPU reacts quickly and precisely. For seasoned players.'
+};
+function aiSpeed(){return{easy:2.2,normal:3.4,hard:5.8}[difficulty];}
+function aiError(){return{easy:38,normal:18,hard:5}[difficulty];}
+
+function setupDiffPicker(rowId,descId){
+  const row=document.getElementById(rowId);
+  const desc=document.getElementById(descId);
+  row.querySelectorAll('.diff-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      difficulty=b.dataset.diff;
+      row.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      desc.textContent=DIFF_DESC[difficulty];
+      // sync both pickers
+      syncDiffPickers();
+      updateHUD();
+    });
+  });
+}
+function syncDiffPickers(){
+  ['diffPickerGate','diffPickerMid'].forEach(id=>{
+    const row=document.getElementById(id);
+    if(!row)return;
+    row.querySelectorAll('.diff-btn').forEach(b=>{
+      b.classList.toggle('active',b.dataset.diff===difficulty);
+    });
+  });
+  document.getElementById('diffDescGate').textContent=DIFF_DESC[difficulty];
+  document.getElementById('diffDescMid').textContent=DIFF_DESC[difficulty];
+}
+setupDiffPicker('diffPickerGate','diffDescGate');
+setupDiffPicker('diffPickerMid','diffDescMid');
+
+/* ═══ PAGES ═══ */
+let gateOpen=true;
+document.getElementById('gateBtn').addEventListener('click',()=>{
+  document.getElementById('pageGate').classList.add('hidden');
+  document.getElementById('pageDiff').classList.remove('hidden');
+});
+document.getElementById('diffConfirmBtn').addEventListener('click',()=>{
+  document.getElementById('pageDiff').classList.add('hidden');
+  document.getElementById('gameWrap').style.display='flex';
+  gateOpen=false;
+  fitHiDPI();
+  newMatch();
+  resumeAC();
+  startMusic();
+});
+
+/* ═══ CANVAS ═══ */
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const CW=()=>canvas.clientWidth;
+const CH=()=>canvas.clientHeight;
+function fitHiDPI(){
+  const r=Math.max(1,Math.floor(window.devicePixelRatio||1));
+  canvas.width=Math.round(canvas.clientWidth*r);
+  canvas.height=Math.round(canvas.clientHeight*r);
+  ctx.setTransform(r,0,0,r,0,0);
+  if(!gateOpen)draw();
+}
+new ResizeObserver(()=>{if(!gateOpen)fitHiDPI();}).observe(canvas);
+
+/* ═══ CONSTANTS ═══ */
+const PH=14,BASE_PW=110,BALL_R=9,MAX_SCORE=11,BASE_SPD=2.4; // slower base speed
+
+/* ═══ VIRTUES & VICES ═══ */
+const VIRTUES=[
+  {id:'prudence', label:'Prudence',   color:'#c9a84c',effect:'slowBall',    dur:5000},
+  {id:'fortitude',label:'Fortitude',  color:'#e8c86a',effect:'growPaddle',  dur:5000},
+  {id:'justice',  label:'Justice',    color:'#a0c878',effect:'shrinkEnemy', dur:4000},
+  {id:'charity',  label:'Charity',    color:'#e88c50',effect:'doublePoints',dur:4000},
+  {id:'hope',     label:'Hope',       color:'#60b8e0',effect:'streakShield',dur:6000},
+  {id:'faith',    label:'Faith',      color:'#d0d0d0',effect:'aimGuide',    dur:5000},
+  {id:'temperance',label:'Temperance',color:'#88c8c0',effect:'cleanse',     dur:0},
+];
+const VICES=[
+  {id:'sloth',    label:'Sloth',   color:'#8b1a1a',effect:'slowPlayer',  dur:4000},
+  {id:'pride',    label:'Pride',   color:'#a0001a',effect:'shrinkPlayer',dur:4000},
+  {id:'wrath',    label:'Wrath',   color:'#cc3300',effect:'fastBall',    dur:4000},
+  {id:'envy',     label:'Envy',    color:'#7a0050',effect:'cpuDouble',   dur:5000},
+  {id:'gluttony', label:'Gluttony',color:'#883300',effect:'bloatPaddle', dur:4000},
+  {id:'lust',     label:'Lust',    color:'#600080',effect:'invertCtrl',  dur:3500},
+  {id:'greed',    label:'Greed',   color:'#c04000',effect:'stealPoints', dur:0},
+];
+
+/* ═══ QUOTES ═══ */
+const CCC=[
+  {t:"The desire for God is written in the human heart.",r:"CCC 27"},
+  {t:"The Eucharist is the source and summit of the Christian life.",r:"CCC 1324"},
+  {t:"Prayer is the raising of one's mind and heart to God.",r:"CCC 2559"},
+  {t:"Charity is the virtue by which we love God above all things for his own sake.",r:"CCC 1822"},
+  {t:"Faith is the virtue by which we believe in God and all that he has revealed.",r:"CCC 1814"},
+  {t:"Hope is the virtue by which we desire the kingdom of heaven as our happiness.",r:"CCC 1817"},
+  {t:"Prudence is the virtue that disposes practical reason to discern our true good.",r:"CCC 1806"},
+  {t:"Freedom is the power to act or not to act, and so to perform deliberate actions.",r:"CCC 1731"},
+  {t:"Human dignity is rooted in our creation in the image and likeness of God.",r:"CCC 1700"},
+  {t:"God's very being is love — everlasting, infinite, and unchanging.",r:"CCC 221"},
+  {t:"The family is the original cell of social life.",r:"CCC 2207"},
+  {t:"Baptism remits sins and gives new birth in the Holy Spirit.",r:"CCC 1262"},
+  {t:"The Holy Spirit is the interior Master of Christian prayer.",r:"CCC 2672"},
+  {t:"Man is by nature and vocation a religious being.",r:"CCC 44"},
+  {t:"Justice consists in the firm and constant will to give God and neighbour their due.",r:"CCC 1807"},
+  {t:"Fortitude ensures firmness in difficulties and constancy in the pursuit of the good.",r:"CCC 1808"},
+  {t:"Temperance moderates the attraction of pleasures and ensures mastery of the will.",r:"CCC 1809"},
+];
+function shuf(a){let b=a.slice();for(let i=b.length-1;i>0;i--){let j=~~(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+let cccPool=shuf(CCC);
+function nextCCC(){if(!cccPool.length)cccPool=shuf(CCC);return cccPool.shift();}
+
+/* ═══ PARTICLES & FLOATS ═══ */
+let particles=[],floats=[];
+function spawnP(x,y,color,n=12){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=1.5+Math.random()*3.5;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:1.5+Math.random()*2.5});
+  }
+}
+function spawnFT(x,y,txt,color){floats.push({x,y,vy:-1.1,txt,color,life:1});}
+let shk={t:0,m:0};
+function trigShk(m,d){shk.t=d;shk.m=m;}
+
+/* ═══ EFFECTS — attributed per side ═══
+   lastTouch: 'player' | 'cpu'
+   When a powerup is collected, effect applies to lastTouch.
+   Virtue on lastTouch=player → buffs player, debuffs CPU (justice/shrinkEnemy)
+   Vice   on lastTouch=player → debuffs player
+   Vice   on lastTouch=cpu   → debuffs cpu (but we only show player-side effects since CPU is AI)
+   We track separate effect banks for player and cpu. */
+
+let lastTouch='player'; // who last hit the ball
+
+// Player effects
+let pEff={
+  slowBall:0,growPaddle:0,shrinkEnemy:0,doublePoints:0,streakShield:0,aimGuide:0,
+  slowPlayer:0,shrinkPlayer:0,fastBall:0,cpuDouble:0,bloatPaddle:0,invertCtrl:0,
+};
+// CPU effects (separate bank, AI-controlled; only a subset make sense)
+let cEff={
+  slowPlayer:0,shrinkPlayer:0, // slow/shrink cpu paddle
+};
+
+function cleanse(){
+  ['slowPlayer','shrinkPlayer','fastBall','cpuDouble','bloatPaddle','invertCtrl'].forEach(k=>pEff[k]=0);
+  cEff.slowPlayer=0;cEff.shrinkPlayer=0;
+  spawnFT(CW()/2,CH()/2,'\u271D Cleansed!','#88c8c0');
+}
+
+function applyEff(item,x,y,isVice){
+  const e=item.effect,d=item.dur;
+  const who=lastTouch; // attribute to who last touched ball
+
+  if(!isVice){
+    // Virtues benefit the last-touch player
+    if(who==='player'){
+      if(e==='slowBall')    pEff.slowBall=d;
+      if(e==='growPaddle')  pEff.growPaddle=d;
+      if(e==='shrinkEnemy') pEff.shrinkEnemy=d; // shrinks CPU
+      if(e==='doublePoints')pEff.doublePoints=d;
+      if(e==='streakShield')pEff.streakShield=d;
+      if(e==='aimGuide')    pEff.aimGuide=d;
+      if(e==='cleanse')     cleanse();
+    } else {
+      // CPU collected virtue — give CPU equivalent benefit (harder for player)
+      if(e==='slowBall')    pEff.fastBall=d;    // CPU prudence → ball speeds for player
+      if(e==='growPaddle')  cEff.shrinkPlayer=0; // CPU gets bigger (cancel player shrink)
+      if(e==='shrinkEnemy') pEff.shrinkPlayer=d; // CPU justice → shrinks player paddle
+      if(e==='cleanse')     { cEff.slowPlayer=0;cEff.shrinkPlayer=0; }
+    }
+  } else {
+    // Vices afflict the last-touch player
+    if(who==='player'){
+      if(e==='slowPlayer')  pEff.slowPlayer=d;
+      if(e==='shrinkPlayer')pEff.shrinkPlayer=d;
+      if(e==='fastBall')    pEff.fastBall=d;
+      if(e==='cpuDouble')   pEff.cpuDouble=d;
+      if(e==='bloatPaddle') pEff.bloatPaddle=d;
+      if(e==='invertCtrl')  pEff.invertCtrl=d;
+      if(e==='stealPoints'){
+        st.userPts=Math.max(0,st.userPts-200);
+        spawnFT(x,y,'-200 pts','#c04000');
+        updateHUD();
+      }
+    } else {
+      // CPU last touched — vice afflicts CPU
+      if(e==='slowPlayer')  cEff.slowPlayer=d;
+      if(e==='shrinkPlayer')cEff.shrinkPlayer=d;
+      if(e==='fastBall')    pEff.slowBall=d;   // CPU wrath → slows ball (easier for player)
+      if(e==='bloatPaddle') cEff.shrinkPlayer=d; // CPU gluttony → their paddle gets unwieldy → we slow them
+    }
+  }
+  spawnP(x,y,item.color,18);
+  trigShk(isVice?6:4,isVice?240:160);
+  if(e!=='stealPoints'&&e!=='cleanse')
+    spawnFT(x,y,(isVice?'\u2717 ':'\u2726 ')+item.label+' ('+(who==='player'?'You':'CPU')+')',item.color);
+  sfx(isVice?'vice':'virtue');
+}
+
+function playerPW(){
+  if(pEff.bloatPaddle>0) return BASE_PW*1.8;
+  if(pEff.shrinkPlayer>0||cEff.shrinkPlayer>0&&lastTouch==='cpu') return BASE_PW*0.5; // only if player is shrunk
+  if(pEff.growPaddle>0) return BASE_PW*1.55;
+  return BASE_PW;
+}
+// Simplified: CPU paddle size
+function cpuPW(){
+  if(pEff.shrinkEnemy>0) return BASE_PW*0.5;
+  if(cEff.shrinkPlayer>0) return BASE_PW*0.55;
+  return BASE_PW;
+}
+function playerSpd(){return pEff.slowPlayer>0?2:7;}
+function ballMult(){
+  if(pEff.slowBall>0&&pEff.fastBall>0) return 1;
+  if(pEff.slowBall>0) return 0.55;
+  if(pEff.fastBall>0) return 1.6;
+  return 1;
+}
+function cpuMoveSpd(){
+  const base=aiSpeed();
+  return cEff.slowPlayer>0?base*0.4:base;
+}
+function multiplier(){
+  if(st.streak>=6)return 4;
+  if(st.streak>=4)return 3;
+  if(st.streak>=2)return 2;
+  return 1;
+}
+
+/* ═══ POWERUPS ═══ */
+let pups=[],puTimer=0,puInterval=8000;
+function spawnPup(){
+  const cw=CW(),ch=CH();
+  const isVice=Math.random()<0.44;
+  const pool=isVice?VICES:VIRTUES;
+  const type=pool[~~(Math.random()*pool.length)];
+  pups.push({x:cw*0.15+Math.random()*cw*0.7,y:ch*0.18+Math.random()*ch*0.64,
+    type,isVice,r:16,pulse:0,done:false});
+}
+
+/* ═══ GAME STATE ═══ */
+let playerAtBottom=true,twoPlayer=false;
+const st={p:{cx:0},c:{cx:0},ball:{x:0,y:0,vx:0,vy:0,trail:[]},
+  scoreP:0,scoreC:0,userPts:0,streak:0,running:false,showMsg:true,pendingDir:0};
+
+function playerY(){return playerAtBottom?CH()-22-PH:22;}
+function cpuY(){return playerAtBottom?22:CH()-22-PH;}
+
+function initPos(){st.p.cx=CW()/2;st.c.cx=CW()/2;}
+function resetBall(dirY=(Math.random()<.5?-1:1)){
+  const cw=CW(),ch=CH();
+  st.ball={x:cw/2,y:ch/2,vx:(Math.random()*2-1)*1.5,vy:BASE_SPD*dirY,trail:[]};
+}
+function newMatch(){
+  st.scoreP=st.scoreC=0;st.userPts=0;st.streak=0;
+  for(const k in pEff)pEff[k]=0;
+  for(const k in cEff)cEff[k]=0;
+  pups=[];particles=[];floats=[];puTimer=0;
+  lastTouch='player';
+  updateHUD();initPos();resetBall();
+  st.showMsg=true;st.running=false;draw();
+}
+function updateHUD(){
+  document.getElementById('scoreP').textContent=st.scoreP;
+  document.getElementById('scoreC').textContent=st.scoreC;
+  document.getElementById('pts').textContent=st.userPts.toLocaleString();
+  document.getElementById('streak').textContent=st.streak;
+  const m=multiplier();
+  document.getElementById('multi').textContent=m>1?`\u00D7${m}`:'';
+  document.getElementById('diffChip').textContent=
+    difficulty.charAt(0).toUpperCase()+difficulty.slice(1);
+}
+
+/* ═══ BUTTONS ═══ */
+function dBtn(id){return document.getElementById(id);}
+function mBtn(id){return document.getElementById(id);}
+
+function doFlip(){
+  playerAtBottom=!playerAtBottom;
+  [dBtn('dBtnFlip'),mBtn('mBtnFlip')].forEach(b=>{if(b)b.classList.toggle('on',!playerAtBottom);});
+  initPos();if(!st.running)draw();
+}
+function doDiff(){showOverlay('diffOverlay');}
+function doGuide(){showOverlay('guideOverlay');}
+function do2P(){
+  twoPlayer=!twoPlayer;
+  const b=dBtn('dBtn2P');if(b){b.textContent=twoPlayer?'1-Player':'2-Player';b.classList.toggle('on',twoPlayer);}
+}
+function doStart(){startOrResume();}
+function doPause(){togglePause();}
+function doReset(){
+  if(quoteVisible())hideQuote();
+  newMatch();
+}
+
+dBtn('dBtnFlip').addEventListener('click',doFlip);
+dBtn('dBtnDiff').addEventListener('click',doDiff);
+dBtn('dBtnMute').addEventListener('click',toggleMusic);
+dBtn('dBtn2P').addEventListener('click',do2P);
+dBtn('dBtnGuide').addEventListener('click',doGuide);
+mBtn('mBtnStart').addEventListener('click',()=>{resumeAC();doStart();});
+mBtn('mBtnPause').addEventListener('click',doPause);
+mBtn('mBtnReset').addEventListener('click',doReset);
+mBtn('mBtnFlip').addEventListener('click',doFlip);
+mBtn('mBtnMute').addEventListener('click',()=>{resumeAC();toggleMusic();});
+mBtn('mBtnDiff').addEventListener('click',doDiff);
+mBtn('mBtnGuide').addEventListener('click',doGuide);
+
+/* Mobile arrows — hold to move */
+let arrowState={left:false,right:false};
+function mArrow(id,dir){
+  const btn=document.getElementById(id);
+  btn.addEventListener('touchstart',e=>{e.preventDefault();resumeAC();arrowState[dir]=true;},{passive:false});
+  btn.addEventListener('touchend',e=>{e.preventDefault();arrowState[dir]=false;},{passive:false});
+  btn.addEventListener('touchcancel',()=>arrowState[dir]=false);
+  btn.addEventListener('mousedown',()=>arrowState[dir]=true);
+  btn.addEventListener('mouseup',()=>arrowState[dir]=false);
+  btn.addEventListener('mouseleave',()=>arrowState[dir]=false);
+}
+mArrow('arrowLeft','left');
+mArrow('arrowRight','right');
+
+/* Overlays */
+function showOverlay(id){
+  const wasPaused=!st.running;
+  if(!wasPaused&&!quoteVisible()) togglePause();
+  document.getElementById(id).classList.add('show');
+}
+function hideOverlay(id){document.getElementById(id).classList.remove('show');}
+function quoteVisible(){return document.getElementById('quoteOverlay').classList.contains('show');}
+
+dBtn('qContinue').addEventListener('click',()=>{hideOverlay('quoteOverlay');continueAfterQuote();});
+dBtn('qReset').addEventListener('click',()=>{hideOverlay('quoteOverlay');newMatch();});
+dBtn('quoteOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('quoteOverlay')){hideOverlay('quoteOverlay');continueAfterQuote();}});
+dBtn('guideClose').addEventListener('click',()=>{hideOverlay('guideOverlay');if(st.running===false&&!st.showMsg)togglePause();});
+dBtn('guideOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('guideOverlay')){hideOverlay('guideOverlay');}});
+dBtn('diffMidClose').addEventListener('click',()=>{
+  hideOverlay('diffOverlay');
+  updateHUD();
+  if(!st.showMsg&&!quoteVisible()) startOrResume();
+});
+dBtn('diffOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('diffOverlay')){hideOverlay('diffOverlay');}});
+
+function showQuote(){
+  const q=nextCCC();
+  document.getElementById('qTitle').textContent='From the Catechism';
+  document.getElementById('qText').textContent=q.t;
+  document.getElementById('qRef').textContent=q.r;
+  document.getElementById('quoteOverlay').classList.add('show');
+}
+function hideQuote(){hideOverlay('quoteOverlay');}
+function continueAfterQuote(){
+  if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;}
+  startOrResume();
+}
+function startOrResume(){
+  if(!st.running){st.running=true;st.showMsg=false;last=performance.now();requestAnimationFrame(loop);}
+}
+function togglePause(){
+  st.running=!st.running;
+  if(st.running){last=performance.now();requestAnimationFrame(loop);}else draw();
+}
+
+/* ═══ KEYBOARD ═══ */
+const keys=new Set();
+window.addEventListener('keydown',e=>{
+  if(gateOpen)return;
+  const k=e.key.toLowerCase();
+  if(['arrowleft','arrowright','p','r',' '].includes(k))e.preventDefault();
+  if(k==='p'){doPause();return;}
+  if(k==='r'){doReset();return;}
+  if(k===' '){resumeAC();if(quoteVisible()){hideQuote();continueAfterQuote();}else startOrResume();return;}
+  keys.add(k);
+});
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+
+/* ═══ GAME LOGIC ═══ */
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+function movePlayers(){
+  const cw=CW();
+  const inv=pEff.invertCtrl>0;
+  const spd=playerSpd();
+  const ppw=playerPW();
+  // Keyboard
+  const goLeft= (inv?keys.has('arrowright'):keys.has('arrowleft')) || arrowState.left;
+  const goRight=(inv?keys.has('arrowleft'):keys.has('arrowright'))  || arrowState.right;
+  if(goLeft)  st.p.cx-=spd;
+  if(goRight) st.p.cx+=spd;
+  st.p.cx=clamp(st.p.cx,ppw/2+4,cw-ppw/2-4);
+
+  if(twoPlayer){
+    const epw=cpuPW();
+    if(keys.has('a'))st.c.cx-=7;
+    if(keys.has('d'))st.c.cx+=7;
+    st.c.cx=clamp(st.c.cx,epw/2+4,cw-epw/2-4);
+  } else {
+    const epw=cpuPW();
+    const err=(Math.random()-0.5)*aiError()*2;
+    const target=st.ball.x+err;
+    if(Math.abs(target-st.c.cx)>2)
+      st.c.cx+=Math.sign(target-st.c.cx)*cpuMoveSpd();
+    st.c.cx=clamp(st.c.cx,epw/2+4,cw-epw/2-4);
+  }
+}
+
+function paddleHitV(paddleCX,pw2,isPlayer){
+  const ball=st.ball;
+  const dx=(ball.x-paddleCX)/(pw2/2);
+  let spd=Math.hypot(ball.vx,ball.vy)*1.03;
+  spd=clamp(spd,BASE_SPD,BASE_SPD*2.5)*ballMult();
+  const angle=dx*0.68;
+  const dirY=-Math.sign(ball.vy);
+  ball.vx=Math.sin(angle)*spd;
+  ball.vy=Math.cos(angle)*spd*dirY;
+  lastTouch=isPlayer?'player':'cpu';
+}
+
+function hitsH(bx,by,pcx,py,pw2){
+  return by+BALL_R>py&&by-BALL_R<py+PH&&bx+BALL_R>pcx-pw2/2&&bx-BALL_R<pcx+pw2/2;
+}
+
+/* ═══ DRAW ═══ */
+function drawCrossShape(cx,cy,s,color,alpha){
+  ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=s*0.13;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(cx,cy-s/2);ctx.lineTo(cx,cy+s/2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-s*0.33,cy-s*0.11);ctx.lineTo(cx+s*0.33,cy-s*0.11);ctx.stroke();
+  ctx.restore();
+}
+function drawCourt(){
+  const cw=CW(),ch=CH();
+  ctx.save();ctx.strokeStyle='rgba(201,168,76,0.17)';ctx.lineWidth=1.4;
+  ctx.strokeRect(5,5,cw-10,ch-10);ctx.restore();
+  ctx.save();ctx.strokeStyle='rgba(201,168,76,0.16)';ctx.lineWidth=1.2;ctx.setLineDash([5,9]);
+  ctx.beginPath();ctx.moveTo(14,ch/2);ctx.lineTo(cw-14,ch/2);ctx.stroke();ctx.restore();
+  drawCrossShape(cw/2,ch/2,28,'#c9a84c',0.12);
+}
+function drawPaddle(cx,y,pw2,isPlayer){
+  const x=cx-pw2/2;
+  ctx.save();
+  if(isPlayer&&pEff.growPaddle>0){ctx.shadowColor='#c9a84c';ctx.shadowBlur=12;}
+  if(isPlayer&&pEff.shrinkPlayer>0){ctx.shadowColor='#a0001a';ctx.shadowBlur=12;}
+  if(isPlayer&&pEff.invertCtrl>0){ctx.shadowColor='#600080';ctx.shadowBlur=10;}
+  ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.85)';
+  ctx.beginPath();ctx.roundRect(x,y,pw2,PH,4);ctx.fill();
+  ctx.restore();
+}
+function drawBall(){
+  const b=st.ball;
+  if(pEff.aimGuide>0){
+    ctx.save();ctx.strokeStyle='rgba(208,208,208,0.18)';ctx.lineWidth=1;ctx.setLineDash([3,7]);
+    ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+b.vx*22,b.y+b.vy*22);ctx.stroke();ctx.restore();
+  }
+  for(let i=0;i<b.trail.length;i++){
+    const t=b.trail[i],a=(i/b.trail.length)*0.26;
+    ctx.beginPath();ctx.arc(t.x,t.y,BALL_R*(i/b.trail.length)*0.55,0,Math.PI*2);
+    ctx.fillStyle=`rgba(201,168,76,${a})`;ctx.fill();
+  }
+  ctx.save();ctx.shadowColor='rgba(201,168,76,0.7)';ctx.shadowBlur=12;
+  ctx.fillStyle='rgba(240,230,190,0.97)';
+  ctx.beginPath();ctx.arc(b.x,b.y,BALL_R,0,Math.PI*2);ctx.fill();ctx.restore();
+  ctx.save();ctx.strokeStyle='rgba(90,60,15,0.45)';ctx.lineWidth=1.3;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(b.x,b.y-BALL_R*0.5);ctx.lineTo(b.x,b.y+BALL_R*0.5);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(b.x-BALL_R*0.36,b.y-BALL_R*0.1);ctx.lineTo(b.x+BALL_R*0.36,b.y-BALL_R*0.1);ctx.stroke();
+  ctx.restore();
+}
+function drawPups(){
+  for(const p of pups){
+    if(p.done)continue;
+    p.pulse=(p.pulse||0)+0.05;
+    const r=p.r+Math.sin(p.pulse)*2;
+    ctx.save();ctx.shadowColor=p.type.color;ctx.shadowBlur=16;
+    ctx.strokeStyle=p.isVice?'rgba(139,26,26,0.8)':'rgba(201,168,76,0.8)';ctx.lineWidth=1.8;
+    ctx.beginPath();ctx.arc(p.x,p.y,r+4,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle=p.type.color+(p.isVice?'bb':'99');
+    ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font='bold 7px ui-sans-serif';ctx.fillStyle=p.isVice?'#ffbbbb':'#2a1800';
+    ctx.fillText(p.type.label.toUpperCase(),p.x,p.y+1);
+    ctx.font='10px ui-sans-serif';ctx.fillStyle=p.isVice?'rgba(255,140,140,0.85)':'rgba(50,30,0,0.7)';
+    ctx.fillText(p.isVice?'\u2717':'\u2726',p.x,p.y-9);
+  }
+}
+function drawParticles(){
+  for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}
+  ctx.globalAlpha=1;
+}
+function drawFloats(){
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(const f of floats){
+    ctx.globalAlpha=f.life;ctx.fillStyle=f.color;
+    ctx.font='bold 13px Palatino,Georgia,serif';
+    ctx.fillText(f.txt,f.x,f.y);
+  }
+  ctx.globalAlpha=1;
+}
+function drawEffBars(){
+  const cw=CW(),ch=CH();
+  const BARS=[
+    {k:'growPaddle',c:'#e8c86a',l:'Fortitude'},{k:'slowBall',c:'#c9a84c',l:'Prudence'},
+    {k:'shrinkEnemy',c:'#a0c878',l:'Justice'},{k:'doublePoints',c:'#e88c50',l:'Charity\u00D72'},
+    {k:'streakShield',c:'#60b8e0',l:'Hope'},{k:'aimGuide',c:'#d0d0d0',l:'Faith'},
+    {k:'slowPlayer',c:'#8b1a1a',l:'Sloth'},{k:'shrinkPlayer',c:'#a0001a',l:'Pride'},
+    {k:'fastBall',c:'#cc3300',l:'Wrath'},{k:'cpuDouble',c:'#7a0050',l:'Envy'},
+    {k:'bloatPaddle',c:'#883300',l:'Gluttony'},{k:'invertCtrl',c:'#600080',l:'Lust'},
+  ];
+  const DUR=5000;
+  const active=BARS.filter(b=>pEff[b.k]>0);
+  const bw=52,gap=4,total=active.length*(bw+gap)-gap;
+  let sx=cw/2-total/2;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  active.forEach(b=>{
+    const pct=Math.min(pEff[b.k]/DUR,1);
+    ctx.fillStyle='rgba(0,0,0,0.38)';ctx.fillRect(sx,ch/2-20,bw,11);
+    ctx.fillStyle=b.c+'88';ctx.fillRect(sx,ch/2-20,bw*pct,11);
+    ctx.fillStyle='rgba(240,232,200,0.9)';ctx.font='bold 7px ui-sans-serif';
+    ctx.fillText(b.l,sx+bw/2,ch/2-14);
+    sx+=bw+gap;
+  });
+}
+function drawStreak(){
+  if(st.streak<2)return;
+  const m=multiplier();
+  const cols=['','','#e8c86a','#a0c878','#60b8e0','#e88c50','#c9a84c'];
+  ctx.fillStyle=cols[Math.min(m,6)]||'#c9a84c';
+  ctx.font='bold 11px Palatino,Georgia,serif';ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.fillText(`\u2726 \u00D7${m} Streak`,12,12);
+}
+function draw(){
+  const cw=CW(),ch=CH();
+  ctx.clearRect(0,0,cw,ch);
+  let ox=0,oy=0;
+  if(shk.t>0){ox=(Math.random()-.5)*shk.m;oy=(Math.random()-.5)*shk.m;}
+  ctx.save();ctx.translate(ox,oy);
+  drawCourt();
+  drawPaddle(st.p.cx,playerY(),playerPW(),true);
+  drawPaddle(st.c.cx,cpuY(),cpuPW(),false);
+  ctx.font='9px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(201,168,76,0.45)';
+  ctx.fillText('YOU',st.p.cx,playerAtBottom?ch-9:9);
+  ctx.fillText(twoPlayer?'P2':'CPU',st.c.cx,playerAtBottom?9:ch-9);
+  drawBall();drawPups();drawParticles();drawFloats();drawEffBars();drawStreak();
+  if(!st.running&&st.showMsg){
+    ctx.fillStyle='rgba(0,0,0,0.58)';ctx.fillRect(0,0,cw,ch);
+    drawCrossShape(cw/2,ch/2-50,36,'#c9a84c',0.55);
+    ctx.textAlign='center';
+    ctx.fillStyle='rgba(201,168,76,0.97)';ctx.font='bold 18px Palatino,Georgia,serif';
+    ctx.fillText('The Field of Battle',cw/2,ch/2-4);
+    ctx.font='10px ui-sans-serif';ctx.fillStyle='rgba(200,185,140,0.72)';
+    ctx.fillText('\u2190\u2192 to move \u00B7 Press Start or Space to begin',cw/2,ch/2+18);
+    ctx.fillText('Gold orbs = Virtue \u00B7 Crimson orbs = Vice',cw/2,ch/2+34);
+    ctx.fillText('Effects apply to the last player who touched the ball',cw/2,ch/2+50);
+  }
+  if(st.scoreP>=MAX_SCORE||st.scoreC>=MAX_SCORE){
+    ctx.fillStyle='rgba(0,0,0,0.62)';ctx.fillRect(0,0,cw,ch);
+    drawCrossShape(cw/2,ch/2-50,32,'#c9a84c',0.6);
+    ctx.textAlign='center';
+    ctx.fillStyle='rgba(201,168,76,0.97)';ctx.font='bold 20px Palatino,Georgia,serif';
+    ctx.fillText(st.scoreP>st.scoreC?'Virtue Prevails!':'Vice Prevails\u2026',cw/2,ch/2);
+    ctx.font='10px ui-sans-serif';ctx.fillStyle='rgba(200,185,140,0.72)';
+    ctx.fillText(`Points: ${st.userPts.toLocaleString()} \u2014 Press Reset or R`,cw/2,ch/2+24);
+  }
+  ctx.restore();
+}
+
+/* ═══ MAIN LOOP ═══ */
+let last=performance.now();
+function loop(now){
+  if(!st.running){draw();return;}
+  const dt=Math.min(32,now-last);last=now;
+  for(const k in pEff){if(pEff[k]>0)pEff[k]-=dt;}
+  for(const k in cEff){if(cEff[k]>0)cEff[k]-=dt;}
+  shk.t=Math.max(0,shk.t-dt);
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=0.06;p.life-=0.022;p.r*=0.97;}
+  floats=floats.filter(f=>f.life>0);
+  for(const f of floats){f.y+=f.vy;f.life-=0.016;}
+  puTimer+=dt;
+  if(puTimer>puInterval&&pups.filter(p=>!p.done).length<3){
+    spawnPup();puTimer=0;puInterval=7000+Math.random()*4000;
+  }
+  movePlayers();
+  const cw=CW(),ch=CH();
+  const b=st.ball;
+  b.trail.push({x:b.x,y:b.y});
+  if(b.trail.length>10)b.trail.shift();
+  const sm=ballMult();
+  b.x+=b.vx*sm;b.y+=b.vy*sm;
+  // Side walls
+  if(b.x<14+BALL_R){b.x=14+BALL_R;b.vx*=-1;spawnP(14,b.y,'#c9a84c',4);sfx('wall');}
+  if(b.x>cw-14-BALL_R){b.x=cw-14-BALL_R;b.vx*=-1;spawnP(cw-14,b.y,'#c9a84c',4);sfx('wall');}
+  // Paddle hits
+  const ppw=playerPW(),epw=cpuPW();
+  const py=playerY(),cy2=cpuY();
+  if(hitsH(b.x,b.y,st.p.cx,py,ppw)){
+    b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R;
+    paddleHitV(st.p.cx,ppw,true);
+    spawnP(b.x,b.y,'#c9a84c',10);trigShk(3,120);sfx('paddle');
+  } else if(hitsH(b.x,b.y,st.c.cx,cy2,epw)){
+    b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R;
+    paddleHitV(st.c.cx,epw,false);
+    spawnP(b.x,b.y,'#aaaaaa',10);trigShk(3,120);sfx('paddle');
+  }
+  // Powerup collection
+  for(const p of pups){
+    if(p.done)continue;
+    const dx=b.x-p.x,dy=b.y-p.y;
+    if(Math.sqrt(dx*dx+dy*dy)<p.r+BALL_R){p.done=true;applyEff(p.type,p.x,p.y,p.isVice);}
+  }
+  pups=pups.filter(p=>!p.done);
+  // Scoring
+  if((playerAtBottom&&b.y<-BALL_R*3)||(!playerAtBottom&&b.y>ch+BALL_R*3)){
+    st.scoreP++;st.streak++;
+    const m=multiplier(),bonus=pEff.doublePoints>0?2:1;
+    const earned=500*m*bonus;
+    st.userPts+=earned;
+    if(pEff.cpuDouble>0)pEff.cpuDouble=0;
+    updateHUD();initPos();
+    if(m>1||bonus>1)spawnFT(cw/2,ch/2,`\u2726 +${earned.toLocaleString()}`,'#c9a84c');
+    st.pendingDir=playerAtBottom?-1:1;
+    st.running=false;showQuote();
+    spawnP(cw/2,playerAtBottom?0:ch,'#c9a84c',22);trigShk(8,380);sfx('score');
+  }
+  if((playerAtBottom&&b.y>ch+BALL_R*3)||(!playerAtBottom&&b.y<-BALL_R*3)){
+    st.scoreC++;
+    if(pEff.streakShield>0){pEff.streakShield=0;spawnFT(cw/2,ch/2,'\u2726 Hope Shield!','#60b8e0');}
+    else st.streak=0;
+    updateHUD();initPos();
+    st.pendingDir=playerAtBottom?1:-1;
+    st.running=false;showQuote();
+    spawnP(cw/2,playerAtBottom?ch:0,'#8b1a1a',22);trigShk(8,380);sfx('lose');
+  }
+  if(st.scoreP>=MAX_SCORE||st.scoreC>=MAX_SCORE)st.running=false;
+  draw();
+  if(st.running)requestAnimationFrame(loop);
+}
+})();
+</script>
+</body>
+</html>
