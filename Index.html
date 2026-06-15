@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>The Field of Battle · v1.7</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{--gold:#c9a84c;--dg:#7a5f1a;--dimgold:rgba(201,168,76,0.18);--crimson:#c0392b;--fg:#f0ece0;--muted:#7a7060;--panel:rgba(255,255,255,0.05);--panel2:rgba(255,255,255,0.09);}
+html,body{height:100%;overflow:hidden;}
+body{background:#06070a;color:var(--fg);font-family:'Palatino Linotype',Palatino,Georgia,serif;display:flex;flex-direction:column;align-items:center;}
+.page{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;background:radial-gradient(ellipse 900px 600px at 50% 35%,#11131c,#05060a 85%);}
+.page.hidden{display:none;}
+.pcard{width:min(460px,94vw);background:rgba(12,13,18,0.97);border:1px solid rgba(201,168,76,0.3);border-radius:20px;padding:26px 22px;text-align:center;box-shadow:0 0 60px rgba(201,168,76,0.07);}
+.pcard .cross{font-size:38px;color:var(--gold);line-height:1;margin-bottom:8px;}
+.pcard h1{font-size:21px;color:var(--gold);margin-bottom:2px;letter-spacing:.4px;}
+.pcard .psub{font-size:11px;color:var(--muted);font-family:ui-sans-serif;margin-bottom:4px;}
+.pcard .ver{display:inline-block;font-size:9px;color:var(--dg);font-family:ui-sans-serif;border:1px solid rgba(201,168,76,0.22);padding:1px 7px;border-radius:6px;margin-bottom:14px;}
+.notice{text-align:left;background:rgba(255,255,255,0.03);border:1px solid var(--panel2);border-radius:10px;padding:12px 14px;font-family:ui-sans-serif;font-size:12px;line-height:1.7;color:#cfc8b6;margin-bottom:14px;}
+.notice strong{color:var(--gold);}.notice ul{margin:5px 0 0;padding-left:15px;}.notice li{margin-bottom:3px;}
+.page-btn{width:100%;padding:12px;font-size:14px;border-radius:11px;cursor:pointer;font-family:ui-sans-serif;background:var(--dimgold);border:1px solid rgba(201,168,76,0.45);color:var(--gold);margin-bottom:8px;transition:.15s;}
+.page-btn:active{background:rgba(201,168,76,0.3);}
+.page-fine{font-size:10px;color:var(--muted);font-family:ui-sans-serif;}
+.diff-row{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+.diff-btn{flex:1;max-width:120px;padding:10px 6px;border-radius:10px;font-size:13px;font-family:ui-sans-serif;cursor:pointer;border:1px solid var(--panel2);background:var(--panel);color:var(--muted);transition:.15s;}
+.diff-btn.active{background:var(--dimgold);border-color:rgba(201,168,76,0.5);color:var(--gold);}
+.diff-desc{font-size:11px;color:var(--muted);font-family:ui-sans-serif;min-height:30px;margin-bottom:12px;line-height:1.5;}
+#gameWrap{display:none;flex-direction:column;width:100%;height:100dvh;max-width:520px;}
+.hud{flex-shrink:0;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--panel2);}
+.brand{display:flex;align-items:center;gap:6px;}
+.brand-cross{font-size:15px;color:var(--gold);}.brand-name{font-size:13px;color:var(--gold);font-weight:700;letter-spacing:.3px;}
+.brand-ver{font-size:9px;color:var(--dg);font-family:ui-sans-serif;border:1px solid rgba(201,168,76,0.2);padding:1px 4px;border-radius:5px;}
+.chips{display:flex;gap:4px;flex-wrap:wrap;}
+.chip{padding:3px 8px;border-radius:7px;background:var(--panel);border:1px solid var(--panel2);font-size:10px;color:var(--muted);font-family:ui-sans-serif;}
+.chip b{color:var(--fg);}
+.chip.gc{background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.3);}.chip.gc b{color:var(--gold);}
+#canvasWrap{flex:1;position:relative;overflow:hidden;min-height:0;}
+canvas{position:absolute;inset:0;width:100%;height:100%;border:none;display:block;touch-action:none;}
+#startOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:10;padding:20px;}
+#startOverlay.hidden{display:none;}
+.start-stack{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;pointer-events:none;}
+.start-cross{font-size:34px;color:var(--gold);line-height:1;opacity:.8;}
+.start-title{font-size:19px;color:var(--gold);font-weight:700;letter-spacing:.4px;font-family:'Palatino Linotype',Palatino,Georgia,serif;}
+.start-sub{font-size:11px;color:rgba(200,185,140,0.72);font-family:ui-sans-serif;line-height:1.4;}
+.start-pulse{pointer-events:all;margin-top:14px;padding:14px 40px;border-radius:14px;font-size:17px;font-family:ui-sans-serif;background:rgba(201,168,76,0.22);border:2px solid rgba(201,168,76,0.7);color:var(--gold);cursor:pointer;letter-spacing:.5px;animation:pulse 1.6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.45);}50%{box-shadow:0 0 0 14px rgba(201,168,76,0);}}
+.ctrl-row{flex-shrink:0;display:none;justify-content:space-between;align-items:center;padding:6px 10px;flex-wrap:wrap;gap:5px;border-top:1px solid var(--panel2);}
+@media(min-width:600px){.ctrl-row{display:flex;}}
+.cbtn{padding:5px 11px;border-radius:8px;background:var(--panel);border:1px solid var(--panel2);color:var(--muted);font-size:11px;font-family:ui-sans-serif;cursor:pointer;transition:.12s;}
+.cbtn:hover,.cbtn:active{border-color:rgba(201,168,76,0.4);color:var(--gold);}
+.cbtn.on{background:var(--dimgold);border-color:rgba(201,168,76,0.5);color:var(--gold);}
+code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px solid var(--panel2);color:#c8bfa0;font-size:10px;}
+.key-hint{font-size:10px;color:var(--muted);font-family:ui-sans-serif;line-height:1.6;}
+#mobCtrl{flex-shrink:0;display:none;flex-direction:column;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--panel2);background:rgba(6,7,10,0.97);}
+@media(max-width:599px){#mobCtrl{display:flex;}}
+.mob-btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;}
+.mbtn{padding:7px 11px;border-radius:8px;background:var(--panel);border:1px solid var(--panel2);color:var(--muted);font-size:11px;font-family:ui-sans-serif;cursor:pointer;white-space:nowrap;transition:.12s;}
+.mbtn:active,.mbtn.on{background:var(--dimgold);border-color:rgba(201,168,76,0.5);color:var(--gold);}
+.mob-arrows{display:flex;align-items:center;gap:8px;}
+.marrow{flex:1;padding:13px 0;font-size:24px;border-radius:12px;background:var(--panel);border:1px solid var(--panel2);color:var(--fg);cursor:pointer;text-align:center;user-select:none;-webkit-user-select:none;transition:.1s;}
+.marrow:active{background:var(--dimgold);border-color:rgba(201,168,76,0.5);}
+.marrow-hint{text-align:center;font-size:10px;color:var(--muted);font-family:ui-sans-serif;line-height:1.4;flex-shrink:0;}
+.overlay{position:fixed;inset:0;display:none;place-items:center;padding:16px;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);z-index:200;overflow-y:auto;}
+.overlay.show{display:grid;}
+.ocard{width:min(580px,96vw);background:rgba(10,11,16,0.98);border:1px solid rgba(201,168,76,0.32);border-radius:16px;padding:18px 18px 14px;max-height:88vh;overflow-y:auto;}
+.ocard h2{font-size:15px;color:var(--gold);margin-bottom:8px;letter-spacing:.3px;}
+.ocard blockquote{font-size:15px;line-height:1.65;color:#ede8d8;font-style:italic;}
+.ocard .ref{margin-top:7px;color:var(--muted);font-size:11px;font-family:ui-sans-serif;}
+.ocard .rinfo{margin-top:8px;font-family:ui-sans-serif;font-size:11px;color:var(--gold);}
+.obtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.obtn{padding:9px 14px;font-size:12px;border-radius:9px;background:var(--panel);border:1px solid var(--panel2);color:var(--fg);cursor:pointer;font-family:ui-sans-serif;}
+.obtn.p{background:var(--dimgold);border-color:rgba(201,168,76,0.45);color:var(--gold);}
+.obtn:active{opacity:.8;}
+.gsec{margin-bottom:12px;}
+.gsec h3{font-size:11px;font-family:ui-sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px;}
+.gi{display:flex;align-items:flex-start;gap:9px;margin-bottom:7px;font-family:ui-sans-serif;}
+.gorb{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:1px;}
+.glabel{font-size:12px;font-weight:600;margin-bottom:1px;}
+.gdesc{font-size:11px;color:var(--muted);line-height:1.45;}
+.grar{font-size:9px;font-family:ui-sans-serif;padding:1px 5px;border-radius:5px;margin-left:5px;vertical-align:middle;}
+.rar-c{background:rgba(120,180,120,0.15);color:#8fce8f;border:1px solid rgba(120,180,120,0.3);}
+.rar-r{background:rgba(120,150,220,0.15);color:#9fb0e0;border:1px solid rgba(120,150,220,0.3);}
+.rar-u{background:rgba(220,150,80,0.15);color:#e0a860;border:1px solid rgba(220,150,80,0.3);}
+#diffMidOv .ocard{text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="page" id="pageGate">
+  <div class="pcard">
+    <div class="cross">&#10013;</div>
+    <h1>The Field of Battle</h1>
+    <div class="psub">Virtues &amp; Vices · A Catholic Pong Experience</div>
+    <div class="ver">v1.7 Preview Build</div>
+    <div class="notice"><strong>A courtesy notice before you begin.</strong>
+      <ul>
+        <li>Runs <strong>entirely locally on your device</strong> — no internet needed.</li>
+        <li><strong>Nothing is collected, stored, or sent anywhere.</strong></li>
+        <li>Preview build — rough edges may appear.</li>
+        <li>Music &amp; sound effects will play — adjust volume first.</li>
+      </ul>
+    </div>
+    <button class="page-btn" id="gateBtn">&#10013;&nbsp; I understand — continue</button>
+    <div class="page-fine">By proceeding you acknowledge this is a local preview build.</div>
+  </div>
+</div>
+
+<div class="page hidden" id="pageDiff">
+  <div class="pcard">
+    <div class="cross">&#9876;</div>
+    <h1>Choose Difficulty</h1>
+    <div class="psub">You can change this at any time during play</div>
+    <div class="ver">v1.7</div>
+    <div class="diff-row" id="dpGate">
+      <button class="diff-btn" data-d="easy">Easy</button>
+      <button class="diff-btn active" data-d="normal">Normal</button>
+      <button class="diff-btn" data-d="hard">Hard</button>
+    </div>
+    <div class="diff-desc" id="ddGate">CPU tracks the ball with moderate accuracy. A fair challenge.</div>
+    <button class="page-btn" id="diffOkBtn">Enter the Field</button>
+    <div class="page-fine">Best of 5 rounds. Win the match for Virtue to prevail.</div>
+  </div>
+</div>
+
+<div id="gameWrap">
+  <div class="hud">
+    <div class="brand">
+      <span class="brand-cross">&#10013;</span>
+      <span class="brand-name">The Field of Battle</span>
+      <span class="brand-ver">v1.7</span>
+    </div>
+    <div class="chips">
+      <div class="chip gc">Round <b id="roundNo">1</b>/5</div>
+      <div class="chip">You <b id="sP">0</b> – <b id="sC">0</b> CPU</div>
+      <div class="chip gc">Streak <b id="streak">0</b><b id="multi"></b></div>
+      <div class="chip" id="dchip">Normal</div>
+    </div>
+  </div>
+  <div id="canvasWrap">
+    <canvas id="game"></canvas>
+    <div id="startOverlay">
+      <div class="start-stack">
+        <div class="start-cross">&#10013;</div>
+        <div class="start-title">The Field of Battle</div>
+        <div class="start-sub">Gold orbs = Virtue &middot; Crimson orbs = Vice</div>
+        <div class="start-sub">Best of 5 rounds &middot; each goal wins a round</div>
+        <button class="start-pulse" id="startPulseBtn">&#10013; Begin</button>
+      </div>
+    </div>
+  </div>
+  <div class="ctrl-row">
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      <button class="cbtn" id="dFlip">Flip sides</button>
+      <button class="cbtn" id="dDiff">Difficulty</button>
+      <button class="cbtn" id="dMute">♪ Music</button>
+      <button class="cbtn" id="d2P">2-Player</button>
+      <button class="cbtn" id="dGuide">View Guide</button>
+    </div>
+    <div class="key-hint">
+      <code class="k">←→</code> move &nbsp; <code class="k">P</code> pause &nbsp; <code class="k">Space</code> start<br/>
+      Quote: <code class="k">↑</code> continue &nbsp; <code class="k">↓</code> reset &nbsp; <code class="k">R</code> reset
+    </div>
+  </div>
+  <div id="mobCtrl">
+    <div class="mob-btns">
+      <button class="mbtn" id="mPause">⏸ Pause</button>
+      <button class="mbtn" id="mReset">↺ Reset</button>
+      <button class="mbtn" id="mMute">♪ Music</button>
+      <button class="mbtn" id="mDiff">Difficulty</button>
+      <button class="mbtn" id="mGuide">📖 Guide</button>
+    </div>
+    <div class="mob-arrows">
+      <button class="marrow" id="aL">&#8592;</button>
+      <div class="marrow-hint">Hold to move<br/>your paddle</div>
+      <button class="marrow" id="aR">&#8594;</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="qOv">
+  <div class="ocard">
+    <h2 id="qTitle">From the Catechism</h2>
+    <blockquote id="qText">…</blockquote>
+    <div class="ref" id="qRef"></div>
+    <div class="rinfo" id="qRound"></div>
+    <div class="obtns">
+      <button class="obtn" id="qReset">Reset &nbsp;<code class="k">↓</code><code class="k">R</code></button>
+      <button class="obtn p" id="qCont">Next Round &nbsp;<code class="k">↑</code><code class="k">Space</code></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="guideOv">
+  <div class="ocard">
+    <h2>&#10013; Virtues &amp; Vices Guide</h2>
+    <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
+      Orbs appear mid-court and activate when the ball passes through them.
+      <strong style="color:var(--gold);">Effects apply to the last player who touched the ball</strong> and last <strong>4 turns</strong> (a turn = any paddle hit). The ball also speeds up 1% each turn.
+    </p>
+    <div class="gsec">
+      <h3>&#9830; Virtues — Gold Orbs</h3>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Prudence<span class="grar rar-u">Ultra Rare</span></div><div class="gdesc">Slows the ball to 75% speed for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Fortitude<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle grows to 3× its default size for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Justice<span class="grar rar-r">Rare</span></div><div class="gdesc">Opponent paddle shrinks by 50% for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Charity<span class="grar rar-c">Common</span></div><div class="gdesc">Ball splits into 20 friendly balls that score for you.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Hope<span class="grar rar-c">Common</span></div><div class="gdesc">A second paddle appears to assist you for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Faith<span class="grar rar-c">Common</span></div><div class="gdesc">Ball gently curves toward your paddle as it returns to you, for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Temperance<span class="grar rar-r">Rare</span></div><div class="gdesc">Instantly removes all active vices affecting you.</div></div></div>
+    </div>
+    <div class="gsec">
+      <h3>&#9830; Vices — Crimson Orbs</h3>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Sloth<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle speed is reduced by 50% for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Pride<span class="grar rar-u">Ultra Rare</span></div><div class="gdesc">Your paddle shrinks to 25% of its default size for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Anger<span class="grar rar-r">Rare</span></div><div class="gdesc">The ball bounces back at 200% speed for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Envy<span class="grar rar-c">Common</span></div><div class="gdesc">Instantly removes all active virtues affecting you.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Gluttony<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle is stunned for 2 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Lust<span class="grar rar-c">Common</span></div><div class="gdesc">Paddle controls are inverted for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Greed<span class="grar rar-c">Common</span></div><div class="gdesc">Removes all virtue orbs from the field and clears your active virtues.</div></div></div>
+    </div>
+    <div class="obtns"><button class="obtn p" id="guideClose">Close Guide</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="diffMidOv">
+  <div class="ocard" style="text-align:center;">
+    <h2>&#9876; Change Difficulty</h2>
+    <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin:6px 0 12px;">Takes effect on next serve.</p>
+    <div class="diff-row" id="dpMid">
+      <button class="diff-btn" data-d="easy">Easy</button>
+      <button class="diff-btn active" data-d="normal">Normal</button>
+      <button class="diff-btn" data-d="hard">Hard</button>
+    </div>
+    <div class="diff-desc" id="ddMid">CPU tracks the ball with moderate accuracy.</div>
+    <div class="obtns" style="justify-content:center;"><button class="obtn p" id="diffMidOk">Confirm &amp; Continue</button></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const GOLD='#c9a84c',CRIM='#c0392b';
+function g(id){return document.getElementById(id);}
+function showOv(id){g(id).classList.add('show');}
+function hideOv(id){g(id).classList.remove('show');}
+function ovVisible(id){return g(id).classList.contains('show');}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+/* ══ AUDIO ══ */
+let AC=null,musicMuted=false,musicTO=null,baseGain=null;
+function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
+function resumeAC(){try{const a=getAC();if(a.state==='suspended')a.resume();}catch(e){}}
+function startMusic(){
+  if(musicMuted)return;stopMusic();
+  const a=getAC();baseGain=a.createGain();baseGain.gain.value=0.10;baseGain.connect(a.destination);
+  const T=1.1;const sc=[146.83,164.81,174.61,196,220,246.94,261.63,293.66,329.63,349.23,392];
+  const mel=[0,2,4,5,4,2,0,0,3,5,7,8,7,5,3,2,0,2,4,5,7,5,4,2,0,0,3,2,0,0,0,0];
+  const bas=[0,0,5,5,0,0,5,5,3,3,8,8,3,3,8,8,0,0,5,5,7,7,5,5,0,0,3,3,0,0,0,0];
+  function note(f,s,d,v,tp='sine'){const o=a.createOscillator(),gn=a.createGain();o.type=tp;o.frequency.setValueAtTime(f,s);gn.gain.setValueAtTime(0,s);gn.gain.linearRampToValueAtTime(v,s+0.04);gn.gain.linearRampToValueAtTime(v*0.6,s+d*0.5);gn.gain.linearRampToValueAtTime(0,s+d-0.03);o.connect(gn);gn.connect(baseGain);o.start(s);o.stop(s+d);}
+  function sched(t){for(let i=0;i<mel.length;i++){const s=t+i*T;note(sc[mel[i]]*2,s,T*0.82,0.44);if(i%4===0)note(sc[bas[i]],s,T*1.7,0.27,'triangle');if(i%8===0)note(sc[0]*0.5,s,T*8,0.07);}return t+mel.length*T;}
+  let t=a.currentTime+0.1;function loop(){t=sched(t);musicTO=setTimeout(loop,(t-a.currentTime-1)*1000);}loop();
+}
+function stopMusic(){if(musicTO){clearTimeout(musicTO);musicTO=null;}}
+function toggleMusic(){musicMuted=!musicMuted;const lbl=musicMuted?'♪ Off':'♪ Music';g('dMute').textContent=lbl;g('mMute').textContent=lbl;g('dMute').classList.toggle('on',musicMuted);g('mMute').classList.toggle('on',musicMuted);if(musicMuted){stopMusic();stopMotif();}else startMusic();}
+let motifGain=null,motifTO=null,currentMotif=null;
+function duckBase(amt){if(baseGain){try{baseGain.gain.setTargetAtTime(amt,getAC().currentTime,0.2);}catch(e){}}}
+function startMotif(kind){if(musicMuted)return;stopMotif();const a=getAC();motifGain=a.createGain();motifGain.gain.value=0;motifGain.connect(a.destination);motifGain.gain.setTargetAtTime(0.12,a.currentTime,0.15);duckBase(0.05);
+  const vP=[392,440,494,587,494,440],xP=[233,220,196,185,196,220],mP=[392,233,440,196,494,220];
+  const pat=kind==='virtue'?vP:kind==='vice'?xP:mP;const tp=kind==='vice'?'sawtooth':kind==='mix'?'triangle':'sine';const T=0.34;let idx=0;
+  function tick(){const now=a.currentTime;const f=pat[idx%pat.length];const o=a.createOscillator(),gn=a.createGain();o.type=tp;o.frequency.setValueAtTime(f,now);gn.gain.setValueAtTime(0,now);gn.gain.linearRampToValueAtTime(0.5,now+0.03);gn.gain.linearRampToValueAtTime(0,now+T*0.9);o.connect(gn);gn.connect(motifGain);o.start(now);o.stop(now+T);idx++;motifTO=setTimeout(tick,T*1000);}tick();}
+function stopMotif(){if(motifTO){clearTimeout(motifTO);motifTO=null;}if(motifGain){try{motifGain.gain.setTargetAtTime(0,getAC().currentTime,0.15);}catch(e){}motifGain=null;}duckBase(0.10);}
+function refreshMotif(){const hasV=anyVirtueActive(),hasX=anyViceActive();let want=null;if(hasV&&hasX)want='mix';else if(hasV)want='virtue';else if(hasX)want='vice';if(want!==currentMotif){currentMotif=want;if(want)startMotif(want);else stopMotif();}}
+function sfx(type){try{const a=getAC(),now=a.currentTime;
+  if(type==='paddle'){const o=a.createOscillator(),gn=a.createGain();o.type='square';o.frequency.setValueAtTime(320,now);o.frequency.linearRampToValueAtTime(200,now+0.06);gn.gain.setValueAtTime(0.15,now);gn.gain.linearRampToValueAtTime(0,now+0.08);o.connect(gn);gn.connect(a.destination);o.start(now);o.stop(now+0.09);}
+  else if(type==='wall'){const o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.value=180;gn.gain.setValueAtTime(0.09,now);gn.gain.linearRampToValueAtTime(0,now+0.05);o.connect(gn);gn.connect(a.destination);o.start(now);o.stop(now+0.06);}
+  else if(type==='virtue'){[440,554,659,880].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.value=f;gn.gain.setValueAtTime(0.15,now+i*0.07);gn.gain.linearRampToValueAtTime(0,now+i*0.07+0.13);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.07);o.stop(now+i*0.07+0.15);});}
+  else if(type==='vice'){[330,311,277,220].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='sawtooth';o.frequency.value=f;gn.gain.setValueAtTime(0.11,now+i*0.07);gn.gain.linearRampToValueAtTime(0,now+i*0.07+0.11);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.07);o.stop(now+i*0.07+0.13);});}
+  else if(type==='score'){[523,659,784,1047].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.value=f;gn.gain.setValueAtTime(0.17,now+i*0.1);gn.gain.linearRampToValueAtTime(0,now+i*0.1+0.15);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.1);o.stop(now+i*0.1+0.17);});}
+  else if(type==='lose'){[392,349,311,262].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(0.17,now+i*0.12);gn.gain.linearRampToValueAtTime(0,now+i*0.12+0.16);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.12);o.stop(now+i*0.12+0.18);});}
+  else if(type==='win'){[523,659,784,1047,1319].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.value=f;gn.gain.setValueAtTime(0.18,now+i*0.13);gn.gain.linearRampToValueAtTime(0,now+i*0.13+0.3);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.13);o.stop(now+i*0.13+0.32);});}
+}catch(e){}}
+
+/* ══ DIFFICULTY ══ */
+let difficulty='normal';
+const DDESC={easy:'CPU moves slowly with generous margin for error. Great for beginners.',normal:'CPU tracks the ball with moderate accuracy. A fair challenge.',hard:'CPU reacts quickly and precisely. For seasoned players.'};
+function aiSpd(){return{easy:3.2,normal:5.0,hard:8.5}[difficulty];}
+function aiErr(){return{easy:48,normal:24,hard:8}[difficulty];}
+function setupDP(rowId){g(rowId).querySelectorAll('.diff-btn').forEach(b=>{b.addEventListener('click',()=>{difficulty=b.dataset.d;syncDP();updateHUD();});});}
+function syncDP(){['dpGate','dpMid'].forEach(id=>{g(id)&&g(id).querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===difficulty));});g('ddGate').textContent=DDESC[difficulty];g('ddMid').textContent=DDESC[difficulty];}
+setupDP('dpGate');setupDP('dpMid');
+
+/* ══ GATE ══ */
+let gateOpen=true;
+g('gateBtn').addEventListener('click',()=>{g('pageGate').classList.add('hidden');g('pageDiff').classList.remove('hidden');});
+g('diffOkBtn').addEventListener('click',()=>{g('pageDiff').classList.add('hidden');g('gameWrap').style.display='flex';gateOpen=false;fitHiDPI();newMatch();resumeAC();startMusic();});
+
+/* ══ CANVAS ══ */
+const canvas=g('game');const ctx=canvas.getContext('2d');
+const CW=()=>canvas.clientWidth,CH=()=>canvas.clientHeight;
+function fitHiDPI(){const r=Math.max(1,Math.floor(window.devicePixelRatio||1));canvas.width=Math.round(canvas.clientWidth*r);canvas.height=Math.round(canvas.clientHeight*r);ctx.setTransform(r,0,0,r,0,0);if(!gateOpen)draw();}
+new ResizeObserver(()=>{if(!gateOpen)fitHiDPI();}).observe(canvas);
+
+/* ══ CONSTANTS ══ */
+const PH=14, BASE_PW=110, BALL_R=9;
+const BASE_SPD=4.8, EFFECT_TURNS=4, TOTAL_ROUNDS=5;
+
+/* ══ ORBS ══ */
+const VIRTUES=[
+  {id:'prudence',label:'Prudence',effect:'prudence',weight:1},
+  {id:'fortitude',label:'Fortitude',effect:'fortitude',weight:4},
+  {id:'justice',label:'Justice',effect:'justice',weight:4},
+  {id:'charity',label:'Charity',effect:'charity',weight:10},
+  {id:'hope',label:'Hope',effect:'hope',weight:10},
+  {id:'faith',label:'Faith',effect:'faith',weight:10},
+  {id:'temperance',label:'Temperance',effect:'temperance',weight:4},
+];
+const VICES=[
+  {id:'sloth',label:'Sloth',effect:'sloth',weight:4},
+  {id:'pride',label:'Pride',effect:'pride',weight:1},
+  {id:'anger',label:'Anger',effect:'anger',weight:4},
+  {id:'envy',label:'Envy',effect:'envy',weight:10},
+  {id:'gluttony',label:'Gluttony',effect:'gluttony',weight:4},
+  {id:'lust',label:'Lust',effect:'lust',weight:10},
+  {id:'greed',label:'Greed',effect:'greed',weight:10},
+];
+function weightedPick(pool){const total=pool.reduce((s,o)=>s+o.weight,0);let r=Math.random()*total;for(const o of pool){if(r<o.weight)return o;r-=o.weight;}return pool[pool.length-1];}
+
+/* ══ QUOTES ══ */
+const CCC=[
+  {t:"The desire for God is written in the human heart.",r:"CCC 27"},
+  {t:"Charity is the virtue by which we love God above all things for his own sake.",r:"CCC 1822"},
+  {t:"Faith is the virtue by which we believe in God and all that he has revealed.",r:"CCC 1814"},
+  {t:"Hope is the virtue by which we desire the kingdom of heaven as our happiness.",r:"CCC 1817"},
+  {t:"Prudence is the virtue that disposes practical reason to discern our true good.",r:"CCC 1806"},
+  {t:"Justice consists in the firm and constant will to give God and neighbour their due.",r:"CCC 1807"},
+  {t:"Fortitude ensures firmness in difficulties and constancy in the pursuit of the good.",r:"CCC 1808"},
+  {t:"Temperance moderates the attraction of pleasures and ensures mastery of the will.",r:"CCC 1809"},
+  {t:"The four cardinal virtues are prudence, justice, fortitude, and temperance.",r:"CCC 1805"},
+  {t:"Faith, hope, and charity are the three theological virtues.",r:"CCC 1813"},
+  {t:"Charity is the greatest of the theological virtues.",r:"CCC 1826"},
+  {t:"The practice of all the virtues is animated and inspired by charity.",r:"CCC 1827"},
+  {t:"Human virtues are firm attitudes and habitual perfections of intellect and will.",r:"CCC 1804"},
+  {t:"Sin is an offense against reason, truth, and right conscience.",r:"CCC 1849"},
+  {t:"Vices can be classified according to the virtues they oppose.",r:"CCC 1866"},
+  {t:"The seven capital sins are pride, avarice, envy, wrath, lust, gluttony, and sloth.",r:"CCC 1866"},
+  {t:"Pride is regarded as the source from which all sins arise.",r:"CCC 1866"},
+  {t:"Hope responds to the aspiration to happiness placed by God in every heart.",r:"CCC 1818"},
+  {t:"By temperance the will masters its instincts and keeps desires within honourable limits.",r:"CCC 1809"},
+  {t:"The moral virtues grow through education, deliberate acts, and perseverance in struggle.",r:"CCC 1810"},
+  {t:"Freedom is the power to act or not to act, and so to perform deliberate actions.",r:"CCC 1731"},
+  {t:"Human dignity is rooted in our creation in the image and likeness of God.",r:"CCC 1700"},
+  {t:"God's very being is love — everlasting, infinite, and unchanging.",r:"CCC 221"},
+  {t:"Grace is favour, the free and undeserved help that God gives us.",r:"CCC 1996"},
+  {t:"Conversion is accomplished in daily life by acts of reconciliation and care for the poor.",r:"CCC 1435"},
+  {t:"The Eucharist is the source and summit of the Christian life.",r:"CCC 1324"},
+];
+function shuf(a){let b=a.slice();for(let i=b.length-1;i>0;i--){let j=~~(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+let cccPool=shuf(CCC);function nextCCC(){if(!cccPool.length)cccPool=shuf(CCC);return cccPool.shift();}
+
+/* ══ PARTICLES ══ */
+let particles=[],floats=[];
+function spawnP(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1.5+Math.random()*3.5;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:1.5+Math.random()*2.5});}}
+function spawnFT(x,y,txt,color){floats.push({x,y,vy:-1.1,txt,color,life:1});}
+let shk={t:0,m:0};function trigShk(m,d){shk.t=d;shk.m=m;}
+
+/* ══ EFFECTS ══ */
+let lastTouch='player';
+let pEff={},cEff={};
+function setP(k,t){pEff[k]=t;}
+function clrVirtues(){['prudence','fortitude','justice','faith'].forEach(k=>delete pEff[k]);hope.active=false;}
+function clrVices(){['sloth','pride','anger','gluttony','lust'].forEach(k=>delete pEff[k]);}
+function anyVirtueActive(){return ['prudence','fortitude','justice','faith'].some(k=>pEff[k]>0)||hope.active;}
+function anyViceActive(){return ['sloth','pride','anger','gluttony','lust'].some(k=>pEff[k]>0);}
+const hope={active:false,cx:0,turns:0};
+function decrementTurns(){
+  for(const k in pEff){pEff[k]--;if(pEff[k]<=0)delete pEff[k];}
+  if(hope.active){hope.turns--;if(hope.turns<=0)hope.active=false;}
+  for(const k in cEff){cEff[k]--;if(cEff[k]<=0)delete cEff[k];}
+  refreshMotif();
+}
+function applyOrb(orb,x,y,isVice){
+  const who=lastTouch,e=orb.effect;
+  if(!isVice){
+    if(who==='player'){
+      if(e==='prudence')setP('prudence',EFFECT_TURNS);
+      if(e==='fortitude')setP('fortitude',EFFECT_TURNS);
+      if(e==='justice')setP('justice',EFFECT_TURNS);
+      if(e==='faith')setP('faith',EFFECT_TURNS);
+      if(e==='charity')triggerCharity();
+      if(e==='hope'){hope.active=true;hope.turns=EFFECT_TURNS;hope.cx=st.p.cx;}
+      if(e==='temperance')clrVices();
+    } else {
+      if(e==='justice')setP('pride',EFFECT_TURNS);
+      if(e==='prudence')setP('anger',EFFECT_TURNS);
+      if(e==='temperance')clrVices();
+    }
+  } else {
+    if(who==='player'){
+      if(e==='sloth')setP('sloth',EFFECT_TURNS);
+      if(e==='pride')setP('pride',EFFECT_TURNS);
+      if(e==='anger')setP('anger',EFFECT_TURNS);
+      if(e==='envy')clrVirtues();
+      if(e==='gluttony')setP('gluttony',2);   // 2-turn stun
+      if(e==='lust')setP('lust',EFFECT_TURNS);
+      if(e==='greed')triggerGreed();
+    } else {
+      if(e==='sloth')cEff.slow=EFFECT_TURNS;
+      if(e==='pride')cEff.shrink=EFFECT_TURNS;
+      if(e==='anger')setP('prudence',EFFECT_TURNS);
+      if(e==='gluttony')cEff.stun=2;
+    }
+  }
+  spawnP(x,y,isVice?CRIM:GOLD,18);
+  trigShk(isVice?6:4,isVice?240:160);
+  spawnFT(x,y,(isVice?'\u2717 ':'\u2726 ')+orb.label+' ('+(who==='player'?'You':'CPU')+')',isVice?CRIM:GOLD);
+  sfx(isVice?'vice':'virtue');refreshMotif();
+}
+function triggerCharity(){
+  const cw=CW(),ch=CH();const base=balls[0]||st.ball;charityBalls=[];
+  for(let i=0;i<20;i++){const ang=(Math.PI*2*i/20);const spd=curBallSpeed()*(0.9+Math.random()*0.5);charityBalls.push({x:base.x,y:base.y,vx:Math.cos(ang)*spd*0.6,vy:Math.sin(ang)*spd,trail:[],});}
+  charityActive=true;spawnFT(cw/2,ch/2,'\u2726 Charity — 20 balls!',GOLD);
+}
+function triggerGreed(){pups=pups.filter(p=>p.isVice);clrVirtues();spawnFT(CW()/2,CH()/2,'\u2717 Greed — virtues stripped',CRIM);}
+
+function playerPW(){if(pEff.pride>0)return BASE_PW*0.25;if(pEff.fortitude>0)return BASE_PW*3.0;return BASE_PW;}
+function cpuPW(){if(pEff.justice>0)return BASE_PW*0.5;if(cEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
+function playerSpd(){if(pEff.gluttony>0)return 0;if(pEff.sloth>0)return 3.5;return 7;}
+function cpuMSpd(){let s=aiSpd();if(cEff.stun>0)return 0;if(cEff.slow>0)s*=0.5;return s;}
+function mult(){if(st.streak>=6)return 4;if(st.streak>=4)return 3;if(st.streak>=2)return 2;return 1;}
+
+/* ══ SPEED MODEL ══
+   roundSpeedMult: starts at 1, +0.01 each round the player wins (stacks).
+   turnSpeedMult: starts at 1 each round, +0.01 per turn (paddle hit).
+   effectScale: prudence 0.75. anger handled at bounce (200% on return).
+*/
+let roundSpeedMult=1.0;
+let turnSpeedMult=1.0;
+function curBallSpeed(){return BASE_SPD*roundSpeedMult*turnSpeedMult;}
+function effectScale(){if(pEff.prudence>0)return 0.75;return 1;}
+
+/* ══ POWERUPS ══ */
+let pups=[],puTimer=0,puInt=6500;
+function spawnPup(){const cw=CW(),ch=CH();const isVice=Math.random()<0.46;const pool=isVice?VICES:VIRTUES;const orb=weightedPick(pool);pups.push({x:cw*0.14+Math.random()*cw*0.72,y:ch*0.2+Math.random()*ch*0.6,orb,isVice,r:16,pulse:0,done:false});}
+
+/* ══ GAME STATE ══ */
+let playerAtBottom=true,twoPlayer=false;
+let balls=[],charityBalls=[],charityActive=false;
+const st={p:{cx:0},c:{cx:0},ball:null,scoreP:0,scoreC:0,round:1,streak:0,running:false,showMsg:true,pendingDir:0,matchOver:false};
+
+function playerY(){return playerAtBottom?CH()-22-PH:22;}
+function cpuY(){return playerAtBottom?22:CH()-22-PH;}
+function initPos(){st.p.cx=CW()/2;st.c.cx=CW()/2;hope.cx=CW()/2;}
+function makeBall(dY){const cw=CW(),ch=CH();const spd=curBallSpeed();return {x:cw/2,y:ch/2,vx:(Math.random()*2-1)*2.6,vy:spd*dY,trail:[]};}
+function resetBall(dY=(Math.random()<.5?-1:1)){turnSpeedMult=1.0;balls=[makeBall(dY)];st.ball=balls[0];charityBalls=[];charityActive=false;}
+function newMatch(){
+  st.scoreP=st.scoreC=0;st.round=1;st.streak=0;st.matchOver=false;
+  roundSpeedMult=1.0;turnSpeedMult=1.0;
+  pEff={};cEff={};hope.active=false;
+  pups=[];particles=[];floats=[];puTimer=0;lastTouch='player';
+  currentMotif=null;stopMotif();
+  updateHUD();initPos();resetBall();
+  st.showMsg=true;st.running=false;
+  g('startOverlay').classList.remove('hidden');draw();
+}
+function updateHUD(){
+  g('roundNo').textContent=Math.min(st.round,TOTAL_ROUNDS);
+  g('sP').textContent=st.scoreP;g('sC').textContent=st.scoreC;
+  g('streak').textContent=st.streak;
+  const m=mult();g('multi').textContent=m>1?` \u00D7${m}`:'';
+  g('dchip').textContent=difficulty.charAt(0).toUpperCase()+difficulty.slice(1);
+}
+g('startPulseBtn').addEventListener('click',()=>{resumeAC();g('startOverlay').classList.add('hidden');startOrResume();});
+
+/* ══ BUTTONS ══ */
+g('dFlip').addEventListener('click',()=>{playerAtBottom=!playerAtBottom;g('dFlip').classList.toggle('on',!playerAtBottom);initPos();if(!st.running)draw();});
+g('dDiff').addEventListener('click',()=>openDiffMid());
+g('dMute').addEventListener('click',toggleMusic);
+g('d2P').addEventListener('click',()=>{twoPlayer=!twoPlayer;g('d2P').textContent=twoPlayer?'1-Player':'2-Player';g('d2P').classList.toggle('on',twoPlayer);});
+g('dGuide').addEventListener('click',()=>{pauseForOverlay();showOv('guideOv');});
+g('mPause').addEventListener('click',togglePause);
+g('mReset').addEventListener('click',doReset);
+g('mMute').addEventListener('click',()=>{resumeAC();toggleMusic();});
+g('mDiff').addEventListener('click',()=>openDiffMid());
+g('mGuide').addEventListener('click',()=>{pauseForOverlay();showOv('guideOv');});
+const arw={left:false,right:false};
+function setupArrow(id,dir){const btn=g(id);btn.addEventListener('touchstart',e=>{e.preventDefault();resumeAC();arw[dir]=true;},{passive:false});btn.addEventListener('touchend',e=>{e.preventDefault();arw[dir]=false;},{passive:false});btn.addEventListener('touchcancel',()=>arw[dir]=false);btn.addEventListener('mousedown',()=>arw[dir]=true);btn.addEventListener('mouseup',()=>arw[dir]=false);btn.addEventListener('mouseleave',()=>arw[dir]=false);}
+setupArrow('aL','left');setupArrow('aR','right');
+let wasRunning=false;
+function pauseForOverlay(){wasRunning=st.running;if(st.running){st.running=false;draw();}}
+function resumeAfterOverlay(){if(wasRunning)startOrResume();}
+g('qCont').addEventListener('click',()=>{hideOv('qOv');continueAfterQuote();});
+g('qReset').addEventListener('click',()=>{hideOv('qOv');newMatch();});
+g('qOv').addEventListener('click',e=>{if(e.target===g('qOv')){hideOv('qOv');continueAfterQuote();}});
+g('guideClose').addEventListener('click',()=>{hideOv('guideOv');resumeAfterOverlay();});
+g('guideOv').addEventListener('click',e=>{if(e.target===g('guideOv')){hideOv('guideOv');resumeAfterOverlay();}});
+g('diffMidOk').addEventListener('click',()=>{hideOv('diffMidOv');updateHUD();resumeAfterOverlay();});
+g('diffMidOv').addEventListener('click',e=>{if(e.target===g('diffMidOv')){hideOv('diffMidOv');resumeAfterOverlay();}});
+function openDiffMid(){pauseForOverlay();syncDP();showOv('diffMidOv');}
+
+function showQuote(roundMsg){const q=nextCCC();g('qTitle').textContent='From the Catechism';g('qText').textContent=q.t;g('qRef').textContent=q.r;g('qRound').textContent=roundMsg||'';showOv('qOv');}
+function continueAfterQuote(){
+  if(st.matchOver){newMatch();return;}
+  if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;}
+  startOrResume();
+}
+function startOrResume(){g('startOverlay').classList.add('hidden');if(!st.running&&!st.matchOver){st.running=true;st.showMsg=false;last=performance.now();requestAnimationFrame(loop);}}
+function togglePause(){if(st.matchOver)return;st.running=!st.running;if(st.running){last=performance.now();requestAnimationFrame(loop);}else draw();}
+function doReset(){if(ovVisible('qOv'))hideOv('qOv');newMatch();}
+const keys=new Set();
+window.addEventListener('keydown',e=>{
+  if(gateOpen)return;const k=e.key.toLowerCase();
+  if(['arrowleft','arrowright','arrowup','arrowdown','p','r',' '].includes(k))e.preventDefault();
+  if(ovVisible('qOv')){if(k==='arrowup'||k===' '){hideOv('qOv');continueAfterQuote();return;}if(k==='arrowdown'||k==='r'){hideOv('qOv');newMatch();return;}return;}
+  if(k==='p'){togglePause();return;}
+  if(k==='r'){doReset();return;}
+  if(k===' '){resumeAC();startOrResume();return;}
+  keys.add(k);
+});
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+
+/* ══ MOVEMENT ══ */
+function trackBall(){return charityActive&&charityBalls.length?charityBalls[0]:(balls[0]||st.ball);}
+function movePlayers(){
+  const cw=CW();const inv=pEff.lust>0;const spd=playerSpd();const ppw=playerPW();
+  const goL=(inv?keys.has('arrowright'):keys.has('arrowleft'))||arw.left;
+  const goR=(inv?keys.has('arrowleft'):keys.has('arrowright'))||arw.right;
+  if(goL)st.p.cx-=spd;if(goR)st.p.cx+=spd;
+  st.p.cx=clamp(st.p.cx,ppw/2+4,cw-ppw/2-4);
+  if(hope.active){const tb=trackBall();if(tb){const d=tb.x;if(Math.abs(d-hope.cx)>2)hope.cx+=Math.sign(d-hope.cx)*5;}hope.cx=clamp(hope.cx,BASE_PW*0.3,cw-BASE_PW*0.3);}
+  if(twoPlayer){const epw=cpuPW();if(keys.has('a'))st.c.cx-=7;if(keys.has('d'))st.c.cx+=7;st.c.cx=clamp(st.c.cx,epw/2+4,cw-epw/2-4);}
+  else{const epw=cpuPW();const tb=trackBall();const err=(Math.random()-0.5)*aiErr()*2;const target=(tb?tb.x:cw/2)+err;if(Math.abs(target-st.c.cx)>2)st.c.cx+=Math.sign(target-st.c.cx)*cpuMSpd();st.c.cx=clamp(st.c.cx,epw/2+4,cw-epw/2-4);}
+}
+function paddleHitBall(b,pcx,pw2,isPlayer){
+  const dx=(b.x-pcx)/(pw2/2);
+  let spd=Math.hypot(b.vx,b.vy)*1.0; // base preserved, growth handled by turnSpeedMult
+  // Anger: ball bounces back at 200% on return (apply burst to vy magnitude)
+  if(pEff.anger>0) spd*=2.0;
+  const angle=dx*0.68;const dY=-Math.sign(b.vy);
+  // normalize to current intended speed then re-apply factors
+  const target=curBallSpeed()*(pEff.anger>0?2.0:1);
+  b.vx=Math.sin(angle)*target;
+  b.vy=Math.cos(angle)*target*dY;
+  lastTouch=isPlayer?'player':'cpu';
+}
+function hitsH(bx,by,pcx,py,pw2){return by+BALL_R>py&&by-BALL_R<py+PH&&bx+BALL_R>pcx-pw2/2&&bx-BALL_R<pcx+pw2/2;}
+
+/* ══ DRAW ══ */
+function drawX(cx,cy,s,color,alpha){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=s*0.13;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(cx,cy-s/2);ctx.lineTo(cx,cy+s/2);ctx.stroke();ctx.beginPath();ctx.moveTo(cx-s*0.33,cy-s*0.11);ctx.lineTo(cx+s*0.33,cy-s*0.11);ctx.stroke();ctx.restore();}
+function drawCourt(){const cw=CW(),ch=CH();ctx.save();ctx.strokeStyle='rgba(201,168,76,0.17)';ctx.lineWidth=1.4;ctx.setLineDash([]);ctx.strokeRect(5,5,cw-10,ch-10);ctx.restore();ctx.save();ctx.strokeStyle='rgba(201,168,76,0.15)';ctx.lineWidth=1.1;ctx.setLineDash([5,9]);ctx.beginPath();ctx.moveTo(14,ch/2);ctx.lineTo(cw-14,ch/2);ctx.stroke();ctx.restore();drawX(cw/2,ch/2,26,GOLD,0.12);}
+function drawPaddle(cx,y,pw2,isPlayer,isHope){const x=cx-pw2/2;ctx.save();if(isPlayer&&pEff.fortitude>0){ctx.shadowColor=GOLD;ctx.shadowBlur=14;}if(isPlayer&&pEff.pride>0){ctx.shadowColor=CRIM;ctx.shadowBlur=14;}if(isPlayer&&pEff.lust>0){ctx.shadowColor='#800080';ctx.shadowBlur=10;}if(isPlayer&&pEff.gluttony>0){ctx.shadowColor=CRIM;ctx.shadowBlur=18;}ctx.fillStyle=isHope?'rgba(201,168,76,0.8)':(isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.85)');ctx.beginPath();ctx.roundRect(x,y,pw2,PH,4);ctx.fill();ctx.restore();}
+function drawBall(b){
+  const speed=Math.hypot(b.vx,b.vy);const ang=Math.atan2(b.vy,b.vx);
+  for(let i=0;i<b.trail.length;i++){const t=b.trail[i],frac=i/b.trail.length,a=frac*0.35;ctx.beginPath();ctx.arc(t.x,t.y,BALL_R*frac*0.7,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fill();}
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1.4;ctx.lineCap='round';
+  for(let k=-1;k<=1;k++){const off=k*BALL_R*0.55;const px=b.x+Math.cos(ang+Math.PI/2)*off;const py=b.y+Math.sin(ang+Math.PI/2)*off;const len=Math.min(28,speed*3.2);ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-Math.cos(ang)*len,py-Math.sin(ang)*len);ctx.stroke();}
+  ctx.restore();
+  ctx.save();ctx.shadowColor='rgba(255,255,255,0.95)';ctx.shadowBlur=18;const grd=ctx.createRadialGradient(b.x,b.y,1,b.x,b.y,BALL_R);grd.addColorStop(0,'rgba(255,255,255,1)');grd.addColorStop(0.6,'rgba(245,248,255,0.95)');grd.addColorStop(1,'rgba(200,220,255,0.6)');ctx.fillStyle=grd;ctx.beginPath();ctx.arc(b.x,b.y,BALL_R,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+function drawPups(){for(const p of pups){if(p.done)continue;p.pulse=(p.pulse||0)+0.05;const r=p.r+Math.sin(p.pulse)*2;const rc=p.isVice?CRIM:GOLD;ctx.save();ctx.shadowColor=rc;ctx.shadowBlur=16;ctx.strokeStyle=rc+'cc';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,r+4,0,Math.PI*2);ctx.stroke();ctx.fillStyle=rc+(p.isVice?'44':'33');ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();ctx.restore();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 7px ui-sans-serif';ctx.fillStyle=p.isVice?'#ffaaaa':'#ffe8a0';ctx.fillText(p.orb.label.toUpperCase(),p.x,p.y+1);ctx.font='10px ui-sans-serif';ctx.fillStyle=p.isVice?'rgba(255,150,150,0.85)':'rgba(255,220,120,0.85)';ctx.fillText(p.isVice?'\u2717':'\u2726',p.x,p.y-9);}}
+function drawParticles(){for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
+function drawFloats(){ctx.textAlign='center';ctx.textBaseline='middle';for(const f of floats){ctx.globalAlpha=f.life;ctx.fillStyle=f.color;ctx.font='bold 13px Palatino,Georgia,serif';ctx.fillText(f.txt,f.x,f.y);}ctx.globalAlpha=1;}
+function drawEffChips(){const list=[];if(pEff.prudence>0)list.push(['Prudence',pEff.prudence,GOLD]);if(pEff.fortitude>0)list.push(['Fortitude',pEff.fortitude,GOLD]);if(pEff.justice>0)list.push(['Justice',pEff.justice,GOLD]);if(pEff.faith>0)list.push(['Faith',pEff.faith,GOLD]);if(hope.active)list.push(['Hope',hope.turns,GOLD]);if(pEff.sloth>0)list.push(['Sloth',pEff.sloth,CRIM]);if(pEff.pride>0)list.push(['Pride',pEff.pride,CRIM]);if(pEff.anger>0)list.push(['Anger',pEff.anger,CRIM]);if(pEff.gluttony>0)list.push(['Stun',pEff.gluttony,CRIM]);if(pEff.lust>0)list.push(['Lust',pEff.lust,CRIM]);if(!list.length)return;const cw=CW();ctx.font='bold 8px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';const chipW=62,gap=4,total=list.length*(chipW+gap)-gap;let sx=cw/2-total/2;for(const[lbl,turns,col]of list){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(sx,CH()/2-10,chipW,15);ctx.fillStyle=col+'33';ctx.fillRect(sx,CH()/2-10,chipW,15);ctx.fillStyle=col;ctx.fillText(`${lbl} ${turns}`,sx+chipW/2,CH()/2-2);sx+=chipW+gap;}}
+function drawStreak(){if(st.streak<2)return;ctx.fillStyle=GOLD;ctx.font='bold 11px Palatino,Georgia,serif';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`\u2726 \u00D7${mult()} Streak`,12,12);}
+function draw(){
+  const cw=CW(),ch=CH();ctx.clearRect(0,0,cw,ch);
+  let ox=0,oy=0;if(shk.t>0){ox=(Math.random()-.5)*shk.m;oy=(Math.random()-.5)*shk.m;}
+  ctx.save();ctx.translate(ox,oy);
+  drawCourt();
+  drawPaddle(st.p.cx,playerY(),playerPW(),true,false);
+  if(hope.active){const hy=playerAtBottom?playerY()-22:playerY()+22;drawPaddle(hope.cx,hy,BASE_PW*0.6,true,true);}
+  drawPaddle(st.c.cx,cpuY(),cpuPW(),false,false);
+  ctx.font='9px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(201,168,76,0.4)';
+  ctx.fillText('YOU',st.p.cx,playerAtBottom?ch-9:9);ctx.fillText(twoPlayer?'P2':'CPU',st.c.cx,playerAtBottom?9:ch-9);
+  if(charityActive){for(const b of charityBalls)drawBall(b);}else{const b=balls[0]||st.ball;if(b)drawBall(b);}
+  drawPups();drawParticles();drawFloats();drawEffChips();drawStreak();
+  if(!st.running&&st.showMsg&&!st.matchOver){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,cw,ch);}
+  if(st.matchOver){
+    const win=st.scoreP>st.scoreC;
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,cw,ch);
+    drawX(cw/2,ch/2-66,40,win?GOLD:CRIM,0.7);
+    ctx.textAlign='center';
+    ctx.fillStyle=win?'rgba(201,168,76,0.98)':'rgba(192,57,43,0.98)';
+    ctx.font='bold 24px Palatino,Georgia,serif';
+    ctx.fillText(win?'Virtue Prevails!':'Vice Prevails…',cw/2,ch/2-12);
+    ctx.font='13px ui-sans-serif';ctx.fillStyle='rgba(220,210,185,0.85)';
+    ctx.fillText(win?'Congratulations — you have won the match!':'The field is lost… but courage, try again.',cw/2,ch/2+14);
+    ctx.font='11px ui-sans-serif';ctx.fillStyle='rgba(200,185,140,0.7)';
+    ctx.fillText(`Final: You ${st.scoreP} – ${st.scoreC} CPU  ·  Press Reset to play again`,cw/2,ch/2+38);
+  }
+  ctx.restore();
+}
+
+/* ══ BALL HELPERS ══ */
+function applyFaith(b){if(pEff.faith>0){const heading=playerAtBottom?b.vy>0:b.vy<0;if(heading){const dx=st.p.cx-b.x;b.vx+=Math.sign(dx)*Math.min(Math.abs(dx)*0.004,0.12);}}}
+function moveBall(b,scale){b.trail.push({x:b.x,y:b.y});if(b.trail.length>9)b.trail.shift();applyFaith(b);b.x+=b.vx*scale;b.y+=b.vy*scale;}
+
+/* ══ ROUND RESOLUTION ══ */
+function endRound(playerWon){
+  if(playerWon){st.scoreP++;st.streak++;roundSpeedMult+=0.01;}  // +1% next round
+  else{st.scoreC++;st.streak=0;}
+  st.round++;
+  updateHUD();
+  // Match over after 5 rounds
+  if(st.round>TOTAL_ROUNDS){
+    st.matchOver=true;st.running=false;
+    sfx(st.scoreP>st.scoreC?'win':'lose');
+    spawnP(CW()/2,CH()/2,st.scoreP>st.scoreC?GOLD:CRIM,30);trigShk(9,500);
+    stopMotif();
+    draw();
+    return;
+  }
+  // Otherwise show quote + advance
+  initPos();
+  st.pendingDir=playerWon?(playerAtBottom?-1:1):(playerAtBottom?1:-1);
+  st.running=false;
+  const speedPct=Math.round((roundSpeedMult-1)*100);
+  const rmsg=playerWon
+    ? `Round won! Advancing to Round ${st.round}/5 · ball speed +${speedPct}%`
+    : `CPU took the round. Round ${st.round}/5 begins.`;
+  showQuote(rmsg);
+}
+
+/* ══ MAIN LOOP ══ */
+let last=performance.now();
+function loop(now){
+  if(!st.running){draw();return;}
+  const dt=Math.min(32,now-last);last=now;
+  shk.t=Math.max(0,shk.t-dt);
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=0.06;p.life-=0.022;p.r*=0.97;}
+  floats=floats.filter(f=>f.life>0);
+  for(const f of floats){f.y+=f.vy;f.life-=0.016;}
+  puTimer+=dt;
+  if(puTimer>puInt&&pups.filter(p=>!p.done).length<3){spawnPup();puTimer=0;puInt=5500+Math.random()*4000;}
+  movePlayers();
+  const cw=CW(),ch=CH();
+  const scale=effectScale();
+  const ppw=playerPW(),epw=cpuPW(),py=playerY(),cy2=cpuY();
+
+  if(charityActive){
+    for(const b of charityBalls){
+      moveBall(b,scale);
+      if(b.x<14+BALL_R){b.x=14+BALL_R;b.vx*=-1;}
+      if(b.x>cw-14-BALL_R){b.x=cw-14-BALL_R;b.vx*=-1;}
+      if(hitsH(b.x,b.y,st.p.cx,py,ppw)){b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R;paddleHitBall(b,st.p.cx,ppw,true);sfx('paddle');}
+      if(hope.active){const hy=playerAtBottom?py-22:py+22;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;paddleHitBall(b,hope.cx,BASE_PW*0.6,true);sfx('paddle');}}
+    }
+    const before=charityBalls.length;
+    let scoredAny=false;
+    charityBalls=charityBalls.filter(b=>{
+      const exitOpp=playerAtBottom?b.y<-BALL_R*2:b.y>ch+BALL_R*2;
+      const exitOwn=playerAtBottom?b.y>ch+BALL_R*2:b.y<-BALL_R*2;
+      if(exitOpp){scoredAny=true;spawnP(cw/2,playerAtBottom?0:ch,GOLD,6);return false;}
+      if(exitOwn)return false;
+      return true;
+    });
+    // In round mode: a charity ball reaching the opponent edge wins the round immediately
+    if(scoredAny){charityActive=false;charityBalls=[];endRound(true);sfx('score');return;}
+    if(charityBalls.length<=1){charityActive=false;resetBall(playerAtBottom?-1:1);spawnFT(cw/2,ch/2,'Back to one ball',GOLD);}
+    draw();if(st.running)requestAnimationFrame(loop);return;
+  }
+
+  const b=balls[0]||st.ball;st.ball=b;
+  moveBall(b,scale);
+  if(b.x<14+BALL_R){b.x=14+BALL_R;b.vx*=-1;spawnP(14,b.y,'#ffffff',4);sfx('wall');}
+  if(b.x>cw-14-BALL_R){b.x=cw-14-BALL_R;b.vx*=-1;spawnP(cw-14,b.y,'#ffffff',4);sfx('wall');}
+
+  let hit=false;
+  if(hitsH(b.x,b.y,st.p.cx,py,ppw)){b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R;paddleHitBall(b,st.p.cx,ppw,true);spawnP(b.x,b.y,'#ffffff',8);trigShk(3,120);sfx('paddle');hit=true;}
+  else if(hope.active){const hy=playerAtBottom?py-22:py+22;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;paddleHitBall(b,hope.cx,BASE_PW*0.6,true);spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');hit=true;}}
+  if(!hit&&hitsH(b.x,b.y,st.c.cx,cy2,epw)){b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R;paddleHitBall(b,st.c.cx,epw,false);spawnP(b.x,b.y,'#aaaaaa',8);trigShk(3,120);sfx('paddle');hit=true;}
+  if(hit){turnSpeedMult+=0.01;decrementTurns();} // +1% per turn
+
+  for(const p of pups){if(p.done)continue;const dx=b.x-p.x,dy=b.y-p.y;if(Math.sqrt(dx*dx+dy*dy)<p.r+BALL_R){p.done=true;applyOrb(p.orb,p.x,p.y,p.isVice);}}
+  pups=pups.filter(p=>!p.done);
+
+  // Goal → ends the round
+  if((playerAtBottom&&b.y<-BALL_R*3)||(!playerAtBottom&&b.y>ch+BALL_R*3)){
+    spawnP(cw/2,playerAtBottom?0:ch,GOLD,22);trigShk(8,380);sfx('score');
+    endRound(true);return;
+  }
+  if((playerAtBottom&&b.y>ch+BALL_R*3)||(!playerAtBottom&&b.y<-BALL_R*3)){
+    spawnP(cw/2,playerAtBottom?ch:0,CRIM,22);trigShk(8,380);sfx('lose');
+    endRound(false);return;
+  }
+  draw();
+  if(st.running)requestAnimationFrame(loop);
+}
+})();
+</script>
+</body>
+</html>
