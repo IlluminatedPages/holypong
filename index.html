@@ -270,7 +270,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
     <div class="gsec">
       <h3>&#9830; Vices &#8212; Crimson Orbs</h3>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Sloth<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle speed is reduced by 50% for 4 turns.</div></div></div>
-      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Pride<span class="grar rar-u">Legendary</span></div><div class="gdesc">Your paddle shrinks to 25% of its default size for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Pride<span class="grar rar-u">Legendary</span></div><div class="gdesc">Your paddle shrinks to 25% of its default size for 5 seconds. A draining ring shows the time left.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Anger<span class="grar rar-r">Rare</span></div><div class="gdesc">The ball turns straight back at you at double speed — and every shot sent at you travels at double speed for 4 turns.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Envy<span class="grar rar-c">Common</span></div><div class="gdesc">Instantly removes all active virtues affecting you.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Gluttony<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle is stunned for 0.8 seconds. A draining ring shows the time left.</div></div></div>
@@ -280,8 +280,8 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
     <div class="gsec">
       <h3>&#9830; How effects interact</h3>
       <ul class="gdesc" style="padding-left:16px;line-height:1.6;">
-        <li>A turn is any paddle hit, by either side. All effects clear at the end of a round.</li>
-        <li>Picking up an effect you already have restarts it at 4 turns.</li>
+        <li>A turn is any paddle hit, by either side. Gluttony and Pride are timed in seconds instead. All effects clear at the end of a round.</li>
+        <li>Picking up an effect you already have restarts it from full.</li>
         <li>Paddle size: Pride overrides Fortitude, and Fortitude overrides Justice&#8217;s shrink.</li>
         <li>Temperance clears your vices; Envy and Greed clear your virtues. Neither removes an effect your opponent placed on you.</li>
         <li>A fresh serve passes straight through orbs until someone hits it.</li>
@@ -542,20 +542,24 @@ let pEff={}, cEff={};
 const hope={active:false,cx:0,turns:0};
 const cHope={active:false,cx:0,turns:0}; // CPU hope assist
 
-function clearAllEffects(){pEff={};cEff={};stun.player=0;stun.cpu=0;hope.active=false;hope.turns=0;cHope.active=false;cHope.turns=0;}
+function clearAllEffects(){pEff={};cEff={};stun.player=0;stun.cpu=0;prideT.player=0;prideT.cpu=0;hope.active=false;hope.turns=0;cHope.active=false;cHope.turns=0;}
 // Effect keys, defined once. 'shrink' is Justice landing on the OPPONENT's bank:
 // a virtue for the caster, a debuff for whoever carries it.
 const OWN_VIRTUE_KEYS=['prudence','fortitude','faith'];
-const VICE_KEYS=['pride','sloth','anger','lust'];
+const VICE_KEYS=['sloth','anger','lust'];
 // Gluttony is a timed stun measured in game time (pausing doesn't use it up)
 const STUN_MS=800;
 let gameT=0; const stun={player:0,cpu:0};
 function stunLeft(who){return Math.max(0,stun[who]-gameT);}
 function stunned(who){return stunLeft(who)>0;}
+// Pride is also timed: 5 seconds of game time
+const PRIDE_MS=5000; const prideT={player:0,cpu:0};
+function prideLeft(who){return Math.max(0,prideT[who]-gameT);}
+function prideOn(who){return prideLeft(who)>0;}
 function clrVirtues(bank){OWN_VIRTUE_KEYS.forEach(k=>delete bank[k]);}
-function clrVices(bank){VICE_KEYS.forEach(k=>delete bank[k]);stun[bank===pEff?'player':'cpu']=0;}
+function clrVices(bank){VICE_KEYS.forEach(k=>delete bank[k]);const w=bank===pEff?'player':'cpu';stun[w]=0;prideT[w]=0;}
 function anyVirtueActive(){return OWN_VIRTUE_KEYS.concat('shrink').some(k=>pEff[k]>0||cEff[k]>0)||hope.active||cHope.active;}
-function anyViceActive(){return VICE_KEYS.some(k=>pEff[k]>0||cEff[k]>0)||stunned('player')||stunned('cpu');}
+function anyViceActive(){return VICE_KEYS.some(k=>pEff[k]>0||cEff[k]>0)||stunned('player')||stunned('cpu')||prideOn('player')||prideOn('cpu');}
 
 function decrementTurns(){
   for(const k in pEff){if(pEff[k]>0){pEff[k]--;if(pEff[k]<=0)delete pEff[k];}}
@@ -596,7 +600,7 @@ function applyOrb(orb,x,y,isVice,ball){
   } else {
     // VICES afflict the toucher
     if(e==='sloth')    mine.sloth=EFFECT_TURNS;
-    if(e==='pride')    mine.pride=EFFECT_TURNS;
+    if(e==='pride')    prideT[who]=gameT+PRIDE_MS;
     if(e==='anger')    {mine.anger=EFFECT_TURNS;if(ball)reverseAt(ball,who);}
     if(e==='envy')     {clrVirtues(mine); if(who==='player')hope.active=false; else cHope.active=false;}
     if(e==='gluttony') stun[who]=gameT+STUN_MS;
@@ -641,8 +645,8 @@ function triggerGreed(who){
 // C3: Fortitude doubles the paddle, capped at 45% of the court width
 function fortPW(){return Math.min(BASE_PW*2,CW()*0.45);}
 function playerPW(){return basePlayerPW()*(st.blessing==='steadfast'?1.1:1);}
-function basePlayerPW(){if(pEff.pride>0)return BASE_PW*0.25;if(pEff.fortitude>0)return fortPW();if(pEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
-function cpuPW(){if(cEff.pride>0)return BASE_PW*0.25;if(cEff.fortitude>0)return fortPW();if(cEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
+function basePlayerPW(){if(prideOn('player'))return BASE_PW*0.25;if(pEff.fortitude>0)return fortPW();if(pEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
+function cpuPW(){if(prideOn('cpu'))return BASE_PW*0.25;if(cEff.fortitude>0)return fortPW();if(cEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
 // C1: human paddles keep pace with the ball, as the CPU already does
 const PADDLE_SPD=7;
 function paceScale(){return Math.max(1,(curBallSpeed()/BASE_SPD)*0.85);}
@@ -673,7 +677,7 @@ function spawnPup(){
 
 /* ══ RUN STATS — for the Examination of Conscience ══ */
 let stats={};
-function resetStats(){stats={roundsWon:0,roundsLost:0,longestRally:0,virtues:{},vices:{}};}
+function resetStats(){stats={roundsWon:0,roundsLost:0,longestRally:0,bestSmiteStreak:0,virtues:{},vices:{}};}
 resetStats();
 function tally(bag,label){bag[label]=(bag[label]||0)+1;}
 function sumBag(bag){return Object.values(bag).reduce((a,b)=>a+b,0);}
@@ -721,13 +725,13 @@ function pulseTick(){pulseTO=null;if(musicMuted||!st.running||st.rally<6)return;
 let playerAtBottom=true, twoPlayer=false;
 let balls=[];
 let roundEnding=false;
-const st={p:{cx:0,vx:0},c:{cx:0,vx:0},rally:0,blessing:null,wardReady:false,scoreP:0,scoreC:0,streak:0,round:1,stage:1,running:false,showMsg:true,paused:false,matchOver:false,matchWon:false,pendingDir:0};
+const st={p:{cx:0,vx:0},c:{cx:0,vx:0},rally:0,smiteStreak:0,blessing:null,wardReady:false,scoreP:0,scoreC:0,streak:0,round:1,stage:1,running:false,showMsg:true,paused:false,matchOver:false,matchWon:false,pendingDir:0};
 
 function playerY(){return playerAtBottom?CH()-22-PH:22;}
 function cpuY(){return playerAtBottom?22:CH()-22-PH;}
 function initPos(){st.p.cx=CW()/2;st.c.cx=CW()/2;hope.cx=CW()/2;cHope.cx=CW()/2;}
 function makeBall(dY){return{x:CW()/2,y:CH()/2,vx:(Math.random()*2-1)*3.0,vy:curBallSpeed()*dY,trail:[]};}
-function resetBall(dY=(Math.random()<.5?-1:1)){turnSpeedMult=1.0;st.rally=0;lastTouch=null;cpuAim.ball=null; // C4: nobody owns a fresh serve
+function resetBall(dY=(Math.random()<.5?-1:1)){turnSpeedMult=1.0;st.rally=0;st.smiteStreak=0;lastTouch=null;cpuAim.ball=null; // C4: nobody owns a fresh serve
   balls=[makeBall(dY)];charityBalls=[];charityActive=false;charityResolved=false;}
 
 function newMatch(){
@@ -877,7 +881,7 @@ function openDiffMid(){pauseForOverlay();syncDP();showOv('diffMidOv');}
 function fillSummary(box,verdict){
   const vs=stats.virtues, top=Object.keys(vs).sort((a,b)=>vs[b]-vs[a])[0];
   const reached=st.matchWon?`All ${TOTAL_STAGES} stages conquered`:`Stage ${st.stage} of ${TOTAL_STAGES} \u00B7 ${stageData().name}`;
-  const rows=[['Stage reached',reached],['Rounds',`won ${stats.roundsWon} \u00B7 lost ${stats.roundsLost}`],['Longest rally',`${stats.longestRally} hit${stats.longestRally===1?'':'s'}`],
+  const rows=[['Stage reached',reached],['Rounds',`won ${stats.roundsWon} \u00B7 lost ${stats.roundsLost}`],['Longest rally',`${stats.longestRally} hit${stats.longestRally===1?'':'s'}`],['Best smite streak',String(stats.bestSmiteStreak)],
     ['Virtues collected',String(sumBag(vs))],['Vices collected',String(sumBag(stats.vices))],['Most-collected virtue',top?`${top} \u00D7${vs[top]}`:'None']];
   box.innerHTML='<h2>Examination of Conscience</h2><div class="verdict"></div><table></table>';
   box.querySelector('.verdict').textContent=verdict||'';
@@ -1087,6 +1091,17 @@ function paddleHitBall(b,pcx,pw2,isPlayer,paddleVx=0,human=false){
   cpuAim.ball=null; // re-aim after every hit
   return smite;
 }
+const SMITE_STREAK_SHOW=5;
+function trackSmite(sm){
+  st.smiteStreak=sm?st.smiteStreak+1:0;
+  if(st.smiteStreak>stats.bestSmiteStreak)stats.bestSmiteStreak=st.smiteStreak;
+  if(st.smiteStreak===SMITE_STREAK_SHOW){sfx('win');trigShk(6,200);}
+}
+function drawSmiteStreak(){
+  if(st.smiteStreak<SMITE_STREAK_SHOW)return; const cw=CW(), y=CH()/2+(playerAtBottom?30:-30); // just off the centre line, on your side
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor=GOLD;ctx.shadowBlur=12+4*stunPulse();
+  ctx.fillStyle=GOLD;ctx.font='bold 15px Palatino,Georgia,serif';ctx.fillText(`\u2726 Smite Streak \u00D7${st.smiteStreak} \u2726`,cw/2,y);ctx.restore();
+}
 function smiteFX(b,isPlayer){spawnP(b.x,b.y,GOLD,16);spawnFT(b.x,b.y+(isPlayer?-18:18),'\u2726 Smite!',GOLD);sfx('smite');if(isPlayer)trigShk(5,150);}
 
 function hitsH(bx,by,pcx,py,pw2){return by+BALL_R>py&&by-BALL_R<py+PH&&bx+BALL_R>pcx-pw2/2&&bx-BALL_R<pcx+pw2/2;}
@@ -1132,11 +1147,11 @@ function handleBallCollisions(b){
   // player paddle
   if(hitsH(b.x,b.y,st.p.cx,py,ppw)){
     b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R; const sm=paddleHitBall(b,st.p.cx,ppw,true,st.p.vx,true);
-    spawnP(b.x,b.y,'#ffffff',8);trigShk(3,120);sfx('paddle');if(sm)smiteFX(b,true);
+    spawnP(b.x,b.y,'#ffffff',8);trigShk(3,120);sfx('paddle');if(sm)smiteFX(b,true);trackSmite(sm);
     onTurnHit(); return true;
   }
   // player hope
-  if(hope.active){const hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;if(paddleHitBall(b,hope.cx,BASE_PW*0.6,true))smiteFX(b,true);spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
+  if(hope.active){const hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;{const sm=paddleHitBall(b,hope.cx,BASE_PW*0.6,true);if(sm)smiteFX(b,true);trackSmite(sm);}spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
   // cpu paddle — no screen shake on CPU hits (keeps CPU side smooth)
   if(hitsH(b.x,b.y,st.c.cx,cy2,epw)){
     b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R; const sm=paddleHitBall(b,st.c.cx,epw,false,st.c.vx,twoPlayer);
@@ -1277,7 +1292,7 @@ function drawPaddle(cx,y,pw2,isPlayer,isHope){
   ctx.save();
   if(!isHope&&stunned(isPlayer?'player':'cpu')){const k=stunPulse();ctx.shadowColor=CRIM;ctx.shadowBlur=10+8*k;ctx.fillStyle=`rgba(${Math.round(120+72*k)},${Math.round(20+37*k)},${Math.round(20+23*k)},0.9)`;}
   else if(!isHope&&ef.fortitude>0){ctx.shadowColor=GOLD;ctx.shadowBlur=14;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
-  else if(!isHope&&ef.pride>0){ctx.shadowColor=CRIM;ctx.shadowBlur=14;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
+  else if(!isHope&&prideOn(isPlayer?'player':'cpu')){ctx.shadowColor=CRIM;ctx.shadowBlur=14;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
   else if(!isHope&&ef.lust>0){ctx.shadowColor='#800080';ctx.shadowBlur=10;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
   else if(!isPlayer&&!isHope&&bossActive()){ctx.shadowColor=CRIM;ctx.shadowBlur=16;ctx.fillStyle='rgba(150,30,25,0.95)';}
   else{ctx.fillStyle=isHope?'rgba(201,168,76,0.8)':(isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.85)');}
@@ -1289,16 +1304,18 @@ function drawPaddle(cx,y,pw2,isPlayer,isHope){
 function stunPulse(){return 0.5+0.5*Math.sin(Date.now()/1000*Math.PI*2);}
 /* Gluttony: a draining ring above the stunned paddle shows how long is left */
 function drawStunTimer(who){
-  const left=stunLeft(who); if(left<=0)return;
+  let left=stunLeft(who), total=STUN_MS, label='STUNNED';
+  if(left<=0){left=prideLeft(who);total=PRIDE_MS;label='PRIDE';}
+  if(left<=0)return;
   const isP=who==='player', cx=isP?st.p.cx:st.c.cx, py=isP?playerY():cpuY();
   const above=isP?playerAtBottom:!playerAtBottom;
-  const y=above?py-16:py+PH+16, r=7, frac=left/STUN_MS;
+  const y=above?py-16:py+PH+16, r=7, frac=left/total;
   ctx.save();
   ctx.lineWidth=2.6;ctx.strokeStyle='rgba(192,57,43,0.25)';ctx.beginPath();ctx.arc(cx-30,y,r,0,Math.PI*2);ctx.stroke();
   ctx.strokeStyle=`rgba(255,90,80,${(0.75+0.2*stunPulse()).toFixed(2)})`;ctx.lineCap='round';
   ctx.beginPath();ctx.arc(cx-30,y,r,-Math.PI/2,-Math.PI/2+Math.PI*2*frac);ctx.stroke();
   ctx.fillStyle='rgba(255,90,80,0.95)';ctx.font='bold 12px ui-sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
-  ctx.fillText('STUNNED',cx-18,y);
+  ctx.fillText(label,cx-18,y);
   ctx.restore();
 }
 function drawStunText(){drawStunTimer('player');drawStunTimer('cpu');}
@@ -1312,7 +1329,7 @@ function drawPips(cx,paddleY,isPlayer){
   const debuffKeys=VICE_KEYS.concat('shrink');
   let turns=0, color=GOLD, total=EFFECT_TURNS;
   let found=false;
-  if(stunned(isPlayer?'player':'cpu'))return; // the stun timer ring takes this spot
+  const w=isPlayer?'player':'cpu'; if(stunned(w)||prideOn(w))return; // the timer ring takes this spot
   for(const k of debuffKeys){if(ef[k]>0){turns=ef[k];color=CRIM;total=EFFECT_TURNS;found=true;break;}}
   if(!found)for(const k of OWN_VIRTUE_KEYS){if(ef[k]>0){turns=ef[k];color=GOLD;total=EFFECT_TURNS;found=true;break;}}
   if(!found&&myHope.active){turns=myHope.turns;color=GOLD;total=EFFECT_TURNS;found=true;}
@@ -1363,7 +1380,7 @@ function draw(){
   ctx.font='9px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(201,168,76,0.4)';
   ctx.fillText('YOU',st.p.cx,playerAtBottom?ch-9:9);ctx.fillText(twoPlayer?'P2':(bossActive()?'THE ADVERSARY':'CPU'),st.c.cx,playerAtBottom?9:ch-9);
   if(charityActive){for(const b of charityBalls)drawBall(b);}else if(balls[0])drawBall(balls[0]);
-  drawPups();drawParticles();drawFloats();drawStreak();drawStunText();drawRoundBanner();
+  drawPups();drawParticles();drawFloats();drawStreak();drawStunText();drawRoundBanner();drawSmiteStreak();
   if(!st.running&&st.showMsg&&!st.matchOver){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,cw,ch);}
   if(st.paused&&!st.running){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,cw,ch);
     ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=GOLD;ctx.font='bold 22px Palatino,Georgia,serif';ctx.fillText('Paused',cw/2,ch/2-10);
