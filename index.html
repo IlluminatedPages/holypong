@@ -55,6 +55,10 @@ canvas{position:absolute;inset:0;width:100%;height:100%;border:none;display:bloc
 .stage-kicker{font-family:ui-sans-serif,system-ui;font-size:13px;letter-spacing:6px;color:var(--gold);opacity:.85;font-weight:700;}
 .stage-title{font-size:30px;color:var(--gold);font-weight:700;letter-spacing:.5px;text-shadow:0 0 24px rgba(201,168,76,0.4);}
 .stage-flavor{font-family:ui-sans-serif;font-size:12px;color:rgba(200,185,140,0.8);max-width:320px;line-height:1.5;margin-bottom:8px;}
+.stage-rule{font-family:ui-sans-serif;font-size:11.5px;color:#e8dcb8;max-width:320px;line-height:1.5;border:1px solid rgba(201,168,76,0.28);border-radius:9px;padding:7px 11px;background:rgba(201,168,76,0.06);margin-bottom:4px;}
+.stage-taunt{font-size:14px;font-style:italic;color:#e07060;max-width:320px;line-height:1.5;margin-bottom:6px;}
+.stage-bless{font-family:ui-sans-serif;font-size:11px;color:var(--gold);margin-bottom:6px;}
+.stage-taunt.hidden,.stage-bless.hidden{display:none;}
 .stage-timer{font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin-top:4px;}
 .ctrl-row{flex-shrink:0;display:none;justify-content:space-between;align-items:center;padding:6px 10px;flex-wrap:wrap;gap:5px;border-top:1px solid var(--panel2);}
 @media(min-width:600px){.ctrl-row{display:flex;}}
@@ -78,6 +82,18 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 .ocard h2{font-size:15px;color:var(--gold);margin-bottom:8px;letter-spacing:.3px;}
 .ocard blockquote{font-size:15px;line-height:1.65;color:#ede8d8;font-style:italic;}
 .ocard blockquote.full{white-space:pre-line;font-size:14px;}
+.bless-opts{display:flex;flex-direction:column;gap:8px;}
+.bless-btn{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:11px;cursor:pointer;background:var(--dimgold);border:1px solid rgba(201,168,76,0.45);color:var(--gold);font-family:'Palatino Linotype',Palatino,Georgia,serif;font-size:15px;}
+.bless-btn small{display:block;margin-top:3px;font-family:ui-sans-serif;font-size:11px;color:#cfc8b6;line-height:1.45;}
+.bless-btn:active{background:rgba(201,168,76,0.3);}
+.qsum{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--panel2);}
+.qsum.hidden{display:none;}
+.qsum .verdict{font-family:ui-sans-serif;font-size:12px;color:var(--gold);margin:2px 0 10px;}
+.qsum table{width:100%;border-collapse:collapse;font-family:ui-sans-serif;font-size:12px;}
+.qsum td{padding:5px 0;border-top:1px solid rgba(255,255,255,0.05);color:#cfc8b6;}
+.qsum td:last-child{text-align:right;color:var(--fg);}
+.qsum.lost .verdict{color:#e07060;}
+#qTitle.minor{font-size:12px;color:var(--muted);font-family:ui-sans-serif;text-transform:uppercase;letter-spacing:.6px;}
 .qmore{margin-top:8px;background:none;border:none;padding:0;color:var(--gold);font-family:ui-sans-serif;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
 .qmore.hidden{display:none;}
 .ocard .ref{margin-top:7px;color:var(--muted);font-size:11px;font-family:ui-sans-serif;}
@@ -154,7 +170,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
     </div>
     <div class="chips">
       <div class="chip gc"><b id="roundLabel">Stage 1 · Rd 1</b></div>
-      <div class="chip">You <b id="sP">0</b> – <b id="sC">0</b> CPU</div>
+      <div class="chip">You <b id="sP">0</b> – <b id="sC">0</b> <span id="oppLbl">CPU</span></div>
       <div class="chip gc">Streak <b id="streak">0</b></div>
       <div class="chip" id="dchip">Normal</div>
     </div>
@@ -175,6 +191,9 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
         <div class="stage-kicker" id="stageKicker">STAGE 2</div>
         <div class="stage-title" id="stageTitle">The Trial of Temperance</div>
         <div class="stage-flavor" id="stageFlavor">The adversary grows fiercer. Hold the line.</div>
+        <div class="stage-taunt hidden" id="stageTaunt"></div>
+        <div class="stage-rule" id="stageRule"></div>
+        <div class="stage-bless hidden" id="stageBless"></div>
         <button class="start-pulse" id="stageBeginBtn">&#10013; Begin Stage</button>
         <div class="stage-timer" id="stageTimer">Auto-starting in 3&hellip;</div>
       </div>
@@ -211,6 +230,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 
 <div class="overlay" id="qOv">
   <div class="ocard">
+    <div class="qsum hidden" id="qSum"></div>
     <h2 id="qTitle">From the Catechism</h2>
     <blockquote id="qText">&#8230;</blockquote>
     <button class="qmore" id="qMore" type="button">Read full paragraph</button>
@@ -227,29 +247,58 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
   <div class="ocard">
     <h2>&#10013; Virtues &amp; Vices Guide</h2>
     <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
-      Orbs appear mid-court and activate when the ball passes through them after it has been hit — a fresh serve passes straight through. Effects apply to the <strong style="color:var(--gold);">last player who touched the ball</strong> and last <strong>4 turns</strong>. Pip dots (&#9679;&#9679;&#9679;&#9675;) by your paddle show turns remaining. Ball speed grows +1.5% per hit.
+      Orbs appear mid-court and activate when the ball passes through them after it has been hit — a fresh serve passes straight through. Effects apply to the <strong style="color:var(--gold);">last player who touched the ball</strong> and last <strong>4 turns</strong>. Pip dots (&#9679;&#9679;&#9679;&#9675;) by your paddle show turns remaining. Ball speed grows +1.5% per hit. Hit with the <strong>edge</strong> of your paddle to <strong style="color:var(--gold);">Smite</strong> — a faster, sharper shot — and move your paddle as you hit to put curve on the ball.
     </p>
     <div class="gsec">
       <h3>&#9830; Virtues &#8212; Gold Orbs</h3>
-      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Prudence<span class="grar rar-u">Ultra Rare</span></div><div class="gdesc">Shows a full trajectory tracker predicting where the ball will land. With Charity: incoming balls slow instead. With Faith: the tracker bends dynamically with the curve.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Prudence<span class="grar rar-u">Legendary</span></div><div class="gdesc">Shows a full trajectory tracker predicting where the ball will land. With Charity: incoming balls slow instead. With Faith: the tracker bends dynamically with the curve.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Fortitude<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle doubles in size (up to 45% of the court width) for 4 turns.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Justice<span class="grar rar-r">Rare</span></div><div class="gdesc">Opponent paddle shrinks by 50% for 4 turns.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Charity<span class="grar rar-c">Common</span></div><div class="gdesc">Ball splits into 20 balls aimed at the opponent. The round is decided by the last surviving ball.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Hope<span class="grar rar-c">Common</span></div><div class="gdesc">A second assist paddle appears beside yours for 4 turns.</div></div></div>
-      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Faith<span class="grar rar-c">Common</span></div><div class="gdesc">Ball gently curves toward your paddle when returning to you, for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Faith<span class="grar rar-c">Common</span></div><div class="gdesc">The ball curves strongly toward your paddle as it comes back to you, leaving a gold trail, for 4 turns.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(201,168,76,0.15);border:2px solid #c9a84c;">&#9670;</div><div><div class="glabel" style="color:#c9a84c;">Temperance<span class="grar rar-r">Rare</span></div><div class="gdesc">Instantly removes all active vices affecting you.</div></div></div>
     </div>
     <div class="gsec">
       <h3>&#9830; Vices &#8212; Crimson Orbs</h3>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Sloth<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle speed is reduced by 50% for 4 turns.</div></div></div>
-      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Pride<span class="grar rar-u">Ultra Rare</span></div><div class="gdesc">Your paddle shrinks to 25% of its default size for 4 turns.</div></div></div>
-      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Anger<span class="grar rar-r">Rare</span></div><div class="gdesc">The ball bounces back faster on every hit, for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Pride<span class="grar rar-u">Legendary</span></div><div class="gdesc">Your paddle shrinks to 25% of its default size for 4 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Anger<span class="grar rar-r">Rare</span></div><div class="gdesc">The ball turns straight back at you at double speed — and every shot sent at you travels at double speed for 4 turns.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Envy<span class="grar rar-c">Common</span></div><div class="gdesc">Instantly removes all active virtues affecting you.</div></div></div>
-      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Gluttony<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle is stunned and cannot move for 2 turns.</div></div></div>
+      <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Gluttony<span class="grar rar-r">Rare</span></div><div class="gdesc">Your paddle is stunned for 0.8 seconds. A draining ring shows the time left.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Lust<span class="grar rar-c">Common</span></div><div class="gdesc">Paddle controls are inverted for 4 turns.</div></div></div>
       <div class="gi"><div class="gorb" style="background:rgba(192,57,43,0.15);border:2px solid #c0392b;">&#10005;</div><div><div class="glabel" style="color:#e05050;">Greed<span class="grar rar-c">Common</span></div><div class="gdesc">Removes all virtue orbs from the field and clears your active virtues instantly.</div></div></div>
     </div>
+    <div class="gsec">
+      <h3>&#9830; How effects interact</h3>
+      <ul class="gdesc" style="padding-left:16px;line-height:1.6;">
+        <li>A turn is any paddle hit, by either side. All effects clear at the end of a round.</li>
+        <li>Picking up an effect you already have restarts it at 4 turns.</li>
+        <li>Paddle size: Pride overrides Fortitude, and Fortitude overrides Justice&#8217;s shrink.</li>
+        <li>Temperance clears your vices; Envy and Greed clear your virtues. Neither removes an effect your opponent placed on you.</li>
+        <li>A fresh serve passes straight through orbs until someone hits it.</li>
+      </ul>
+    </div>
+    <div class="gsec">
+      <h3>&#9830; Stages</h3>
+      <ul class="gdesc" style="padding-left:16px;line-height:1.6;">
+        <li><b>1 &middot; The Threshold</b> &mdash; standard play.</li>
+        <li><b>2 &middot; The Trial of Temperance</b> &mdash; orbs are scarce.</li>
+        <li><b>3 &middot; The Crucible</b> &mdash; three in four orbs are vices.</li>
+        <li><b>4 &middot; The Gauntlet</b> &mdash; a drifting barrier at mid-court.</li>
+        <li><b>5 &middot; The Final Reckoning</b> &mdash; The Adversary: vices its shots pass through land on you, and virtues it touches are destroyed.</li>
+        <li>After each stage you win, choose one of two blessings for the next stage.</li>
+      </ul>
+    </div>
     <div class="obtns"><button class="obtn p" id="guideClose">Close Guide</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="blessOv">
+  <div class="ocard" style="text-align:center;max-width:420px;">
+    <h2 id="blessTitle">A Blessing for the Road Ahead</h2>
+    <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin:4px 0 12px;">Choose one. It lasts for the next stage.</p>
+    <div class="bless-opts" id="blessOpts"></div>
   </div>
 </div>
 
@@ -282,7 +331,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 (()=>{
 'use strict';
 /* ══ VERSION — change this one line for each release ══ */
-const VERSION='1.8.3';
+const VERSION='1.9.0';
 document.title=`The Field of Battle · v${VERSION}`;
 document.querySelectorAll('.js-ver').forEach(el=>{el.textContent='v'+VERSION;});
 const GOLD='#c9a84c', CRIM='#c0392b';
@@ -306,8 +355,9 @@ function startMusic(){
   function note(f,s,d,v,tp='sine'){const o=a.createOscillator(),gn=a.createGain();o.type=tp;o.frequency.setValueAtTime(f,s);gn.gain.setValueAtTime(0,s);gn.gain.linearRampToValueAtTime(v,s+0.04);gn.gain.linearRampToValueAtTime(v*0.6,s+d*0.5);gn.gain.linearRampToValueAtTime(0,s+d-0.03);o.connect(gn);gn.connect(baseGain);o.start(s);o.stop(s+d);}
   function sched(t){for(let i=0;i<mel.length;i++){const s=t+i*T;note(sc[mel[i]]*2,s,T*0.82,0.44);if(i%4===0)note(sc[bas[i]],s,T*1.7,0.27,'triangle');if(i%8===0)note(sc[0]*0.5,s,T*8,0.07);}return t+mel.length*T;}
   let t=a.currentTime+0.1; function loop(){t=sched(t);musicTO=setTimeout(loop,(t-a.currentTime-1)*1000);} loop();
+  updateDrone();
 }
-function stopMusic(){if(musicTO){clearTimeout(musicTO);musicTO=null;}}
+function stopMusic(){if(musicTO){clearTimeout(musicTO);musicTO=null;}if(typeof stopDrone==='function')stopDrone();}
 function toggleMusic(){
   musicMuted=!musicMuted; const lbl=musicMuted?'&#9835; Off':'&#9835; Music';
   g('dMute').innerHTML=lbl; g('mMute').innerHTML=lbl;
@@ -331,6 +381,7 @@ function refreshMotif(){const hasV=anyVirtueActive(),hasX=anyViceActive();let wa
 function sfx(type){
   try{const a=getAC(),now=a.currentTime;
     if(type==='paddle'){const o=a.createOscillator(),gn=a.createGain();o.type='square';o.frequency.setValueAtTime(320,now);o.frequency.linearRampToValueAtTime(200,now+0.06);gn.gain.setValueAtTime(0.15,now);gn.gain.linearRampToValueAtTime(0,now+0.08);o.connect(gn);gn.connect(a.destination);o.start(now);o.stop(now+0.09);}
+    else if(type==='smite'){[784,1175].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(0.16,now+i*0.05);gn.gain.linearRampToValueAtTime(0,now+i*0.05+0.14);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.05);o.stop(now+i*0.05+0.16);});}
     else if(type==='wall'){const o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.value=180;gn.gain.setValueAtTime(0.09,now);gn.gain.linearRampToValueAtTime(0,now+0.05);o.connect(gn);gn.connect(a.destination);o.start(now);o.stop(now+0.06);}
     else if(type==='virtue'){[440,554,659,880].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.value=f;gn.gain.setValueAtTime(0.15,now+i*0.07);gn.gain.linearRampToValueAtTime(0,now+i*0.07+0.13);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.07);o.stop(now+i*0.07+0.15);});}
     else if(type==='vice'){[330,311,277,220].forEach((f,i)=>{const o=a.createOscillator(),gn=a.createGain();o.type='sawtooth';o.frequency.value=f;gn.gain.setValueAtTime(0.11,now+i*0.07);gn.gain.linearRampToValueAtTime(0,now+i*0.07+0.11);o.connect(gn);gn.connect(a.destination);o.start(now+i*0.07);o.stop(now+i*0.07+0.13);});}
@@ -348,7 +399,7 @@ function aiBaseSpd(){return{easy:4.5,normal:7.0,hard:11.0}[difficulty];}
 function aiSpd(){return aiBaseSpd()*stageAiBonus()*Math.max(1,turnSpeedMult*0.85);}
 // C2: max aim offset (px) chosen once per incoming ball. Paddle half-width + ball radius = 64,
 // so offsets beyond that are genuine misjudgements.
-function aiErr(){return{easy:90,normal:66,hard:36}[difficulty];}
+function aiErr(){return{easy:90,normal:66,hard:36}[difficulty]*(bossActive()?0.7:1);} // the boss misjudges less
 const cpuAim={ball:null,off:0};
 function setupDP(rowId){g(rowId).querySelectorAll('.diff-btn').forEach(b=>{b.addEventListener('click',()=>{difficulty=b.dataset.d;syncDP();updateHUD();});});}
 function syncDP(){['dpGate','dpMid'].forEach(id=>{g(id)&&g(id).querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===difficulty));});g('ddGate').textContent=DDESC[difficulty];g('ddMid').textContent=DDESC[difficulty];}
@@ -373,7 +424,7 @@ const TOTAL_STAGES=5, ROUNDS_TO_WIN_STAGE=3; // best-of-5: first to 3 round wins
 
 /* ══ ORBS ══ */
 const VIRTUES=[
-  {id:'prudence', label:'Prudence',  effect:'prudence',  weight:4},
+  {id:'prudence', label:'Prudence',  effect:'prudence',  weight:2}, // Legendary
   {id:'fortitude',label:'Fortitude', effect:'fortitude', weight:4},
   {id:'justice',  label:'Justice',   effect:'justice',   weight:4},
   {id:'charity',  label:'Charity',   effect:'charity',   weight:10},
@@ -383,7 +434,7 @@ const VIRTUES=[
 ];
 const VICES=[
   {id:'sloth',   label:'Sloth',   effect:'sloth',   weight:4},
-  {id:'pride',   label:'Pride',   effect:'pride',   weight:4},
+  {id:'pride',   label:'Pride',   effect:'pride',   weight:2}, // Legendary
   {id:'anger',   label:'Anger',   effect:'anger',   weight:4},
   {id:'envy',    label:'Envy',    effect:'envy',    weight:10},
   {id:'gluttony',label:'Gluttony',effect:'gluttony',weight:4},
@@ -483,15 +534,20 @@ let pEff={}, cEff={};
 const hope={active:false,cx:0,turns:0};
 const cHope={active:false,cx:0,turns:0}; // CPU hope assist
 
-function clearAllEffects(){pEff={};cEff={};hope.active=false;hope.turns=0;cHope.active=false;cHope.turns=0;}
+function clearAllEffects(){pEff={};cEff={};stun.player=0;stun.cpu=0;hope.active=false;hope.turns=0;cHope.active=false;cHope.turns=0;}
 // Effect keys, defined once. 'shrink' is Justice landing on the OPPONENT's bank:
 // a virtue for the caster, a debuff for whoever carries it.
 const OWN_VIRTUE_KEYS=['prudence','fortitude','faith'];
-const VICE_KEYS=['gluttony','pride','sloth','anger','lust'];
+const VICE_KEYS=['pride','sloth','anger','lust'];
+// Gluttony is a timed stun measured in game time (pausing doesn't use it up)
+const STUN_MS=800;
+let gameT=0; const stun={player:0,cpu:0};
+function stunLeft(who){return Math.max(0,stun[who]-gameT);}
+function stunned(who){return stunLeft(who)>0;}
 function clrVirtues(bank){OWN_VIRTUE_KEYS.forEach(k=>delete bank[k]);}
-function clrVices(bank){VICE_KEYS.forEach(k=>delete bank[k]);}
+function clrVices(bank){VICE_KEYS.forEach(k=>delete bank[k]);stun[bank===pEff?'player':'cpu']=0;}
 function anyVirtueActive(){return OWN_VIRTUE_KEYS.concat('shrink').some(k=>pEff[k]>0||cEff[k]>0)||hope.active||cHope.active;}
-function anyViceActive(){return VICE_KEYS.some(k=>pEff[k]>0||cEff[k]>0);}
+function anyViceActive(){return VICE_KEYS.some(k=>pEff[k]>0||cEff[k]>0)||stunned('player')||stunned('cpu');}
 
 function decrementTurns(){
   for(const k in pEff){if(pEff[k]>0){pEff[k]--;if(pEff[k]<=0)delete pEff[k];}}
@@ -507,8 +563,15 @@ let charityBalls=[], charityActive=false, charityResolved=false, charityLastExit
 /* FIX: proper effect attribution — effects apply to whoever last touched the ball.
    'player' effects go in pEff, 'cpu' effects go in cEff.
    Cross-effects (justice shrinks the OTHER paddle) handled explicitly. */
-function applyOrb(orb,x,y,isVice){
-  const who=lastTouch, e=orb.effect;
+function applyOrb(orb,x,y,isVice,ball){
+  let who=lastTouch; const e=orb.effect;
+  // The Adversary: vices its shots pass through land on YOU; virtues it touches are destroyed
+  if(bossActive()&&who==='cpu'){
+    if(!isVice){spawnP(x,y,CRIM,14);spawnFT(x,y,'\u2717 '+orb.label+' destroyed',CRIM);sfx('vice');return;}
+    who='player';
+  }
+  if(isVice&&who==='player'&&st.wardReady){st.wardReady=false;spawnP(x,y,GOLD,14);spawnFT(x,y,'\u2726 Warded \u2014 '+orb.label,GOLD);sfx('virtue');return;}
+  if(who==='player')tally(isVice?stats.vices:stats.virtues,orb.label);
   const mine = who==='player' ? pEff : cEff;     // bank of the toucher
   const other= who==='player' ? cEff : pEff;     // opponent bank
   const myHope = who==='player' ? hope : cHope;
@@ -526,9 +589,9 @@ function applyOrb(orb,x,y,isVice){
     // VICES afflict the toucher
     if(e==='sloth')    mine.sloth=EFFECT_TURNS;
     if(e==='pride')    mine.pride=EFFECT_TURNS;
-    if(e==='anger')    mine.anger=EFFECT_TURNS;
+    if(e==='anger')    {mine.anger=EFFECT_TURNS;if(ball)reverseAt(ball,who);}
     if(e==='envy')     {clrVirtues(mine); if(who==='player')hope.active=false; else cHope.active=false;}
-    if(e==='gluttony') mine.gluttony=2;
+    if(e==='gluttony') stun[who]=gameT+STUN_MS;
     if(e==='lust')     mine.lust=EFFECT_TURNS;
     if(e==='greed')    triggerGreed(who);
   }
@@ -551,6 +614,14 @@ function triggerCharity(owner){
   }
   spawnFT(CW()/2,CH()/2,'\u2726 Charity \u2014 20 balls!',GOLD);
 }
+// Anger: the ball turns straight back toward the angry player at double speed
+const ANGER_MULT=2.0;
+function reverseAt(b,who){
+  const towardP=playerAtBottom?1:-1, dir=who==='player'?towardP:-towardP;
+  const spd=clamp(curBallSpeed()*ANGER_MULT,BASE_SPD*0.5,BASE_SPD*4.5);
+  const ang=Math.atan2(b.vx,Math.abs(b.vy)); // keep the sideways drift
+  b.vx=Math.sin(ang)*spd; b.vy=Math.cos(ang)*spd*dir;
+}
 function triggerGreed(who){
   pups=pups.filter(p=>p.isVice);
   clrVirtues(who==='player'?pEff:cEff);
@@ -561,16 +632,17 @@ function triggerGreed(who){
 /* Derived paddle / speed stats */
 // C3: Fortitude doubles the paddle, capped at 45% of the court width
 function fortPW(){return Math.min(BASE_PW*2,CW()*0.45);}
-function playerPW(){if(pEff.pride>0)return BASE_PW*0.25;if(pEff.fortitude>0)return fortPW();if(pEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
+function playerPW(){return basePlayerPW()*(st.blessing==='steadfast'?1.1:1);}
+function basePlayerPW(){if(pEff.pride>0)return BASE_PW*0.25;if(pEff.fortitude>0)return fortPW();if(pEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
 function cpuPW(){if(cEff.pride>0)return BASE_PW*0.25;if(cEff.fortitude>0)return fortPW();if(cEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
 // C1: human paddles keep pace with the ball, as the CPU already does
 const PADDLE_SPD=7;
 function paceScale(){return Math.max(1,(curBallSpeed()/BASE_SPD)*0.85);}
-function humanSpd(bank){if(bank.gluttony>0)return 0;return PADDLE_SPD*paceScale()*(bank.sloth>0?0.5:1);}
+function humanSpd(bank){if(stunned(bank===pEff?'player':'cpu'))return 0;return PADDLE_SPD*paceScale()*(bank.sloth>0?0.5:1);}
 function playerMoveSpd(){return humanSpd(pEff);}
-function cpuMSpd(){let s=aiSpd();if(cEff.gluttony>0)return 0;if(cEff.sloth>0)s*=0.5;return s;}
+function cpuMSpd(){let s=aiSpd();if(stunned('cpu'))return 0;if(cEff.sloth>0)s*=0.5;return s;}
 function curBallSpeed(){return BASE_SPD*roundSpeedMult*turnSpeedMult*stageSpeedBonus();}
-function oppName(){return twoPlayer?'Player 2':'CPU';}
+function oppName(){return twoPlayer?'Player 2':(bossActive()?'The Adversary':'CPU');}
 
 /* Prudence combos:
    - alone or with Faith → trajectory tracker (tracker on)
@@ -584,47 +656,124 @@ let roundSpeedMult=1.0, turnSpeedMult=1.0;
 /* ══ POWERUPS ══ */
 let pups=[], puTimer=0, puInt=6500;
 function spawnPup(){
-  const cw=CW(),ch=CH(); const isVice=Math.random()<0.58;
+  const cw=CW(),ch=CH(); const isVice=Math.random()<stageData().viceShare;
   const pool=isVice?VICES:VIRTUES; const orb=weightedPick(pool);
-  pups.push({x:cw*0.14+Math.random()*cw*0.72,y:ch*0.2+Math.random()*ch*0.6,orb,isVice,r:16,pulse:0,done:false});
+  let y=ch*0.2+Math.random()*ch*0.6;
+  if(barrier.on&&Math.abs(y-ch/2)<40)y+=(y<ch/2?-1:1)*60; // keep orbs clear of the barrier
+  pups.push({x:cw*0.14+Math.random()*cw*0.72,y,orb,isVice,r:16,pulse:0,done:false});
 }
+
+/* ══ RUN STATS — for the Examination of Conscience ══ */
+let stats={};
+function resetStats(){stats={roundsWon:0,roundsLost:0,longestRally:0,virtues:{},vices:{}};}
+resetStats();
+function tally(bag,label){bag[label]=(bag[label]||0)+1;}
+function sumBag(bag){return Object.values(bag).reduce((a,b)=>a+b,0);}
+
+/* ══ BLESSINGS — chosen after each stage win, last for the next stage ══ */
+const BLESSINGS=[
+  {id:'hope',     name:'Hope\u2019s Start',      desc:'An assist paddle for the first 2 turns of each round.'},
+  {id:'steadfast',name:'Steadfast',               desc:'Your paddle is 10% wider.'},
+  {id:'watch',    name:'Watchfulness',            desc:'Prudence\u2019s tracker for the first 2 turns of each round.'},
+  {id:'ward',     name:'Ward of Temperance',      desc:'The first vice to strike you each round has no effect.'},
+];
+function blessingName(){const b=BLESSINGS.find(x=>x.id===st.blessing);return b?b.name:'';}
+function offerBlessing(nextStage){
+  const pick=shuf(BLESSINGS).slice(0,2), box=g('blessOpts'); box.innerHTML='';
+  g('blessTitle').textContent=`A Blessing for Stage ${nextStage}`;
+  pick.forEach((b,i)=>{const btn=document.createElement('button');btn.className='bless-btn';btn.type='button';
+    btn.innerHTML=`${i+1}. ${b.name}<small></small>`;btn.querySelector('small').textContent=b.desc;
+    btn.addEventListener('click',()=>chooseBlessing(b.id,nextStage));box.appendChild(btn);});
+  blessPick=pick; showOv('blessOv');
+}
+let blessPick=[];
+function chooseBlessing(id,nextStage){st.blessing=id;hideOv('blessOv');sfx('virtue');showStageIntro(nextStage);}
+// applied at the start of every round
+function applyRoundBlessing(){
+  st.wardReady=st.blessing==='ward';
+  if(st.blessing==='hope'){hope.active=true;hope.turns=2;hope.cx=st.p.cx;}
+  if(st.blessing==='watch'){pEff.prudence=2;}
+  refreshMotif();
+}
+
+/* ══ MUSIC LAYERS — a drone from Stage 3, and a pulse that quickens with long rallies ══ */
+let drone=null, pulseTO=null;
+function stopDrone(){if(!drone)return;try{const t=getAC().currentTime;drone.g.gain.setTargetAtTime(0,t,0.4);drone.o.forEach(o=>o.stop(t+2));}catch(e){}drone=null;}
+function updateDrone(){
+  stopDrone(); if(musicMuted||gateOpen||st.stage<3||st.matchOver)return;
+  try{const a=getAC(),gn=a.createGain();gn.gain.value=0;gn.connect(a.destination);
+    const lvl={3:0.025,4:0.04,5:0.055}[Math.min(st.stage,5)];
+    const o=[73.42,110].map((f,i)=>{const x=a.createOscillator();x.type=i?'triangle':'sine';x.frequency.value=f;x.connect(gn);x.start();return x;});
+    gn.gain.setTargetAtTime(lvl,a.currentTime,1.2); drone={o,g:gn};}catch(e){}
+}
+function thump(){try{const a=getAC(),now=a.currentTime,o=a.createOscillator(),gn=a.createGain();o.type='sine';o.frequency.setValueAtTime(110,now);o.frequency.exponentialRampToValueAtTime(48,now+0.13);gn.gain.setValueAtTime(0.14,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.16);o.connect(gn);gn.connect(a.destination);o.start(now);o.stop(now+0.18);}catch(e){}}
+function pulseTick(){pulseTO=null;if(musicMuted||!st.running||st.rally<6)return;thump();pulseTO=setTimeout(pulseTick,Math.max(260,620-(st.rally-6)*25));}
 
 /* ══ GAME STATE ══ */
 let playerAtBottom=true, twoPlayer=false;
 let balls=[];
 let roundEnding=false;
-const st={p:{cx:0},c:{cx:0},scoreP:0,scoreC:0,streak:0,round:1,stage:1,running:false,showMsg:true,paused:false,matchOver:false,matchWon:false,pendingDir:0};
+const st={p:{cx:0,vx:0},c:{cx:0,vx:0},rally:0,blessing:null,wardReady:false,scoreP:0,scoreC:0,streak:0,round:1,stage:1,running:false,showMsg:true,paused:false,matchOver:false,matchWon:false,pendingDir:0};
 
 function playerY(){return playerAtBottom?CH()-22-PH:22;}
 function cpuY(){return playerAtBottom?22:CH()-22-PH;}
 function initPos(){st.p.cx=CW()/2;st.c.cx=CW()/2;hope.cx=CW()/2;cHope.cx=CW()/2;}
 function makeBall(dY){return{x:CW()/2,y:CH()/2,vx:(Math.random()*2-1)*3.0,vy:curBallSpeed()*dY,trail:[]};}
-function resetBall(dY=(Math.random()<.5?-1:1)){turnSpeedMult=1.0;lastTouch=null;cpuAim.ball=null; // C4: nobody owns a fresh serve
+function resetBall(dY=(Math.random()<.5?-1:1)){turnSpeedMult=1.0;st.rally=0;lastTouch=null;cpuAim.ball=null; // C4: nobody owns a fresh serve
   balls=[makeBall(dY)];charityBalls=[];charityActive=false;charityResolved=false;}
 
 function newMatch(){
-  st.scoreP=0;st.scoreC=0;st.streak=0;st.round=1;st.stage=1;st.matchOver=false;st.matchWon=false;
+  st.scoreP=0;st.scoreC=0;st.streak=0;st.round=1;st.stage=1;st.matchOver=false;st.matchWon=false;st.blessing=null;st.wardReady=false;
+  resetStats(); stopDrone(); hideOv('blessOv');
   roundSpeedMult=1.0; clearAllEffects();
   pups=[];particles=[];floats=[];puTimer=0;lastTouch='player';roundEnding=false;
   currentMotif=null;stopMotif();
   cancelStageTimer();
   g('stageIntro').classList.add('hidden');
-  updateHUD();initPos();resetBall();
+  updateHUD();initPos();resetBall();setupBarrier();puInt=6500;
   st.showMsg=true;st.running=false;st.paused=false;
   g('startOverlay').classList.remove('hidden'); draw();
 }
 
 /* ══ STAGES ══ */
+// Each stage has its own rule. orbRate scales how often orbs appear; maxOrbs caps them;
+// viceShare is the chance an orb is a vice.
 const STAGE_DATA=[
-  {name:'The Threshold',        flavor:'Your trial begins. Steady hands, steady heart.'},
-  {name:'The Trial of Temperance', flavor:'The adversary grows fiercer. Hold the line.'},
-  {name:'The Crucible',         flavor:'Faster now, and unforgiving. Press on.'},
-  {name:'The Gauntlet',         flavor:'Few reach this far. Virtue is tested in fire.'},
-  {name:'The Final Reckoning',  flavor:'The last stand. Let virtue prevail.'},
+  {name:'The Threshold',           flavor:'Your trial begins. Steady hands, steady heart.',
+   rule:'Standard play.', orbRate:1, maxOrbs:3, viceShare:0.58},
+  {name:'The Trial of Temperance', flavor:'The adversary grows fiercer. Hold the line.',
+   rule:'Orbs are scarce — one at a time, half as often. A test of pure skill.', orbRate:0.5, maxOrbs:1, viceShare:0.58},
+  {name:'The Crucible',            flavor:'Faster now, and unforgiving. Press on.',
+   rule:'Temptation burns hot — three in four orbs are vices.', orbRate:1, maxOrbs:3, viceShare:0.75},
+  {name:'The Gauntlet',            flavor:'Few reach this far. Virtue is tested in fire.',
+   rule:'A barrier drifts across mid-court. The ball rebounds off it.', orbRate:1, maxOrbs:3, viceShare:0.58, barrier:true},
+  {name:'The Final Reckoning',     flavor:'The last stand. Let virtue prevail.',
+   rule:'The Adversary\u2019s shots carry vices to you. Virtues it touches are destroyed.', orbRate:1, maxOrbs:3, viceShare:0.58, boss:true,
+   taunt:'\u201CWhy struggle? Yield, and all of this ends.\u201D'},
 ];
+/* The Gauntlet: a barrier drifting side to side across mid-court */
+const barrier={on:false,x:0,w:0,vx:1.3,h:10};
+const BARRIER_SPD=1.3;
+function setupBarrier(){barrier.on=!!stageData().barrier;barrier.w=Math.max(70,CW()*0.26);barrier.x=CW()/2;barrier.vx=BARRIER_SPD;}
+function barrierStep(x,vx,f){const cw=CW(),hw=barrier.w/2;x+=vx*f;if(x<14+hw){x=14+hw;vx=Math.abs(vx);}if(x>cw-14-hw){x=cw-14-hw;vx=-Math.abs(vx);}return[x,vx];}
+function moveBarrier(dtN){if(!barrier.on)return;[barrier.x,barrier.vx]=barrierStep(barrier.x,barrier.vx,dtN);}
+function barrierY(){return CH()/2-barrier.h/2;}
+// returns true if the ball at (x,y) moving (vx,vy) hits a barrier centred at bx; mutates o={x,y,vx,vy}
+function bounceBarrier(o,bx){
+  const by=barrierY(),hw=barrier.w/2,h=barrier.h;
+  if(!(o.x+BALL_R>bx-hw&&o.x-BALL_R<bx+hw&&o.y+BALL_R>by&&o.y-BALL_R<by+h))return false;
+  if(o.x>=bx-hw&&o.x<=bx+hw){ // top or bottom face
+    if(o.vy>0){o.y=by-BALL_R;o.vy=-Math.abs(o.vy);}else{o.y=by+h+BALL_R;o.vy=Math.abs(o.vy);}
+  }else{ // end cap
+    if(o.x<bx){o.x=bx-hw-BALL_R;o.vx=-Math.abs(o.vx);}else{o.x=bx+hw+BALL_R;o.vx=Math.abs(o.vx);}
+  }
+  return true;
+}
+function stageData(){return STAGE_DATA[Math.min(st.stage-1,STAGE_DATA.length-1)];}
+function bossActive(){return !!stageData().boss&&!twoPlayer;}
 // Per-stage difficulty ramp: ball faster, CPU sharper each stage
 function stageSpeedBonus(){return 1 + (st.stage-1)*0.08;}   // +8% base speed per stage
-function stageAiBonus(){return 1 + (st.stage-1)*0.12;}      // CPU +12% speed per stage
+function stageAiBonus(){return 1 + (st.stage-1)*0.14;}      // CPU +14% speed per stage (nudged up to offset blessings)
 
 let stageTimerTO=null, stageCountdown=3;
 function cancelStageTimer(){if(stageTimerTO){clearInterval(stageTimerTO);stageTimerTO=null;}}
@@ -633,7 +782,7 @@ function showStageIntro(nextStage){
   st.stage=nextStage;
   // reset round scores for the new stage
   st.scoreP=0;st.scoreC=0;st.round=1;st.streak=0;roundSpeedMult=1.0;
-  clearAllEffects(); pups=[]; particles=[]; floats=[];
+  clearAllEffects(); pups=[]; particles=[]; floats=[]; puTimer=0; puInt=6500/STAGE_DATA[Math.min(nextStage-1,4)].orbRate;
   roundEnding=false; lastTouch='player';
   initPos(); resetBall();
   updateHUD();
@@ -641,6 +790,12 @@ function showStageIntro(nextStage){
   g('stageKicker').textContent=`STAGE ${nextStage}`;
   g('stageTitle').textContent=data.name;
   g('stageFlavor').textContent=data.flavor;
+  const boss=!!data.boss&&!twoPlayer;
+  g('stageKicker').textContent=boss?`STAGE ${nextStage} \u00B7 THE ADVERSARY`:`STAGE ${nextStage}`;
+  g('stageTaunt').textContent=boss?data.taunt:''; g('stageTaunt').classList.toggle('hidden',!boss);
+  g('stageRule').textContent=(data.boss&&twoPlayer)?'Final stage. No quarter given.':data.rule;
+  setupBarrier(); applyRoundBlessing();
+  g('stageBless').textContent=st.blessing?`Blessing: ${blessingName()}`:''; g('stageBless').classList.toggle('hidden',!st.blessing);
   g('stageIntro').classList.remove('hidden');
   g('startOverlay').classList.add('hidden');
   // 3-second auto-start countdown
@@ -657,13 +812,13 @@ function showStageIntro(nextStage){
 function beginStage(){
   cancelStageTimer();
   g('stageIntro').classList.add('hidden');
-  resumeAC();
+  resumeAC(); updateDrone();
   startOrResume();
 }
 
 function updateHUD(){
   g('roundLabel').textContent=`Stage ${st.stage} \u00B7 Rd ${st.round}`;
-  g('sP').textContent=st.scoreP; g('sC').textContent=st.scoreC;
+  g('sP').textContent=st.scoreP; g('sC').textContent=st.scoreC; g('oppLbl').textContent=twoPlayer?'P2':(bossActive()?'Adversary':'CPU');
   g('streak').textContent=st.streak;
   g('dchip').textContent=difficulty.charAt(0).toUpperCase()+difficulty.slice(1);
 }
@@ -674,7 +829,7 @@ g('stageBeginBtn').addEventListener('click',()=>{beginStage();});
 g('dFlip').addEventListener('click',()=>{playerAtBottom=!playerAtBottom;g('dFlip').classList.toggle('on',!playerAtBottom);initPos();if(!st.running)draw();});
 g('dDiff').addEventListener('click',()=>openDiffMid());
 g('dMute').addEventListener('click',toggleMusic);
-g('d2P').addEventListener('click',()=>{twoPlayer=!twoPlayer;g('d2P').textContent=twoPlayer?'1-Player':'2-Player';g('d2P').classList.toggle('on',twoPlayer);g('p2hint').style.display=twoPlayer?'inline':'none';});
+g('d2P').addEventListener('click',()=>{twoPlayer=!twoPlayer;g('d2P').textContent=twoPlayer?'1-Player':'2-Player';g('d2P').classList.toggle('on',twoPlayer);g('p2hint').style.display=twoPlayer?'inline':'none';updateHUD();});
 g('dGuide').addEventListener('click',()=>{pauseForOverlay();showOv('guideOv');});
 g('mPause').addEventListener('click',togglePause);
 g('mReset').addEventListener('click',doReset);
@@ -709,6 +864,18 @@ g('diffMidOk').addEventListener('click',()=>{hideOv('diffMidOv');updateHUD();res
 g('diffMidOv').addEventListener('click',e=>{if(e.target===g('diffMidOv')){hideOv('diffMidOv');resumeAfterOverlay();}});
 function openDiffMid(){pauseForOverlay();syncDP();showOv('diffMidOv');}
 
+/* Examination of Conscience — the end-of-run summary */
+function fillSummary(box,verdict){
+  const vs=stats.virtues, top=Object.keys(vs).sort((a,b)=>vs[b]-vs[a])[0];
+  const reached=st.matchWon?`All ${TOTAL_STAGES} stages conquered`:`Stage ${st.stage} of ${TOTAL_STAGES} \u00B7 ${stageData().name}`;
+  const rows=[['Stage reached',reached],['Rounds',`won ${stats.roundsWon} \u00B7 lost ${stats.roundsLost}`],['Longest rally',`${stats.longestRally} hit${stats.longestRally===1?'':'s'}`],
+    ['Virtues collected',String(sumBag(vs))],['Vices collected',String(sumBag(stats.vices))],['Most-collected virtue',top?`${top} \u00D7${vs[top]}`:'None']];
+  box.innerHTML='<h2>Examination of Conscience</h2><div class="verdict"></div><table></table>';
+  box.querySelector('.verdict').textContent=verdict||'';
+  const tb=box.querySelector('table');
+  rows.forEach(([k,v])=>{const tr=document.createElement('tr');const a=document.createElement('td'),b=document.createElement('td');a.textContent=k;b.textContent=v;tr.append(a,b);tb.appendChild(tr);});
+  box.classList.toggle('lost',!st.matchWon);
+}
 let curQuote=null;
 g('qMore').addEventListener('click',()=>{if(!curQuote)return;const qt=g('qText'),full=!qt.classList.contains('full');qt.classList.toggle('full',full);qt.textContent=full?curQuote.t:curQuote.x;g('qMore').textContent=full?'Show excerpt':'Read full paragraph';});
 function showQuote(roundMsg){
@@ -717,11 +884,13 @@ function showQuote(roundMsg){
   curQuote=q; const qt=g('qText'); qt.textContent=q.x; qt.classList.remove('full');
   const more=g('qMore'); more.textContent='Read full paragraph'; more.classList.toggle('hidden',q.x===q.t);
   g('qRef').textContent=q.r; g('qRound').textContent=roundMsg||'';
+  const sum=g('qSum'); sum.classList.toggle('hidden',!st.matchOver); g('qTitle').classList.toggle('minor',st.matchOver);
+  if(st.matchOver){fillSummary(sum,roundMsg);g('qRound').textContent='';}
   if(st.matchOver){g('qCont').textContent='Play Again';g('qReset').textContent='Back to Start';}
   else{g('qCont').textContent='Next Round';g('qReset').textContent='Reset';}
   showOv('qOv');
 }
-function continueAfterQuote(){if(st.matchOver){newMatch();return;}if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;}startOrResume();}
+function continueAfterQuote(){if(st.matchOver){newMatch();return;}if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;applyRoundBlessing();}startOrResume();}
 function startOrResume(){g('startOverlay').classList.add('hidden');st.paused=false;if(!st.running&&!st.matchOver){st.running=true;st.showMsg=false;last=performance.now();requestAnimationFrame(loop);}}
 function introVisible(){return !g('stageIntro').classList.contains('hidden');}
 function togglePause(){if(st.matchOver||introVisible())return;st.running=!st.running;st.paused=!st.running;if(st.running){last=performance.now();requestAnimationFrame(loop);}else draw();}
@@ -739,7 +908,7 @@ function doReset(){askReset();}
 /* B5: Back to Start returns to the courtesy notice */
 function backToStart(){
   st.running=false;cancelStageTimer();stopMotif();stopMusic();
-  ['qOv','resetOv','guideOv','diffMidOv'].forEach(hideOv);
+  ['qOv','resetOv','guideOv','diffMidOv','blessOv'].forEach(hideOv);
   g('gameWrap').style.display='none';gateOpen=true;
   g('pageGate').classList.remove('hidden');
 }
@@ -749,6 +918,7 @@ window.addEventListener('keydown',e=>{
   if(gateOpen)return; const k=e.key.toLowerCase();
   if(['arrowleft','arrowright','arrowup','arrowdown','p','r',' '].includes(k))e.preventDefault();
   if(ovVisible('resetOv')){if(k==='escape')closeReset(false);else if(k==='enter')closeReset(true);return;}
+  if(ovVisible('blessOv')){const i=['1','2'].indexOf(k);if(i>=0&&blessPick[i])g('blessOpts').children[i].click();return;}
   if(ovVisible('guideOv')||ovVisible('diffMidOv'))return;
   if(ovVisible('qOv')){
     if(k==='arrowup'||k===' '){hideOv('qOv');continueAfterQuote();return;}
@@ -808,7 +978,7 @@ function nearestThreatBallForPlayer(){
 }
 
 function movePlayers(dtN){
-  const cw=CW();
+  const cw=CW(), px0=st.p.cx, cx0=st.c.cx;
   const inv=pEff.lust>0;
   const spd=playerMoveSpd()*dtN;
   const ppw=playerPW();
@@ -851,35 +1021,60 @@ function movePlayers(dtN){
     if(tb){const d=tb.x-cHope.cx;cHope.cx+=Math.sign(d)*Math.min(Math.abs(d),6*paceScale()*dtN);}
     const hopePW=BASE_PW*0.6; cHope.cx=clamp(cHope.cx,hopePW/2+10,cw-hopePW/2-10);
   }
+  const k=Math.max(dtN,0.001); st.p.vx=(st.p.cx-px0)/k; st.c.vx=(st.c.cx-cx0)/k; // px per frame, for english
 }
 
-// FIX: Anger no longer compounds with turn speed uncontrollably.
-// Anger applies a flat +60% to the post-bounce speed, capped sanely.
-function paddleHitBall(b,pcx,pw2,isPlayer){
-  const dx=(b.x-pcx)/(pw2/2);
-  const angle=clamp(dx,-1,1)*0.68;
+/* Edge-shot smite: the outer 15% of any paddle sends a sharper, faster shot.
+   Paddle english: a human paddle that is moving at contact puts curve on the ball. */
+const SMITE_EDGE=0.70, SMITE_MULT=1.35, SMITE_ANGLE=0.85, NORMAL_ANGLE=0.68;
+const SPIN_K=0.006, SPIN_MAX=0.06, SPIN_DECAY=0.97;
+function applySpin(b,dtN){if(!b.spin)return;b.vx+=b.spin*dtN;b.spin*=Math.pow(SPIN_DECAY,dtN);if(Math.abs(b.spin)<0.001)b.spin=0;}
+// The Adversary steers its return through a vice orb when one is reachable
+function bossAim(b,dY){
+  if(Math.random()>0.8)return null;
+  let best=null;
+  for(const p of pups){
+    if(p.done||!p.isVice)continue;
+    const dy=p.y-b.y; if(Math.sign(dy)!==Math.sign(dY))continue;
+    const a=Math.atan2(p.x-b.x,Math.abs(dy));
+    if(Math.abs(a)<=SMITE_ANGLE&&(best===null||Math.abs(dy)<best.d))best={a,d:Math.abs(dy)};
+  }
+  return best?best.a:null;
+}
+function paddleHitBall(b,pcx,pw2,isPlayer,paddleVx=0,human=false){
+  const raw=(b.x-pcx)/(pw2/2), smite=Math.abs(raw)>=SMITE_EDGE;
+  let angle=clamp(raw,-1,1)*(smite?SMITE_ANGLE:NORMAL_ANGLE);
   const dY=-Math.sign(b.vy)||(playerAtBottom?(isPlayer?-1:1):(isPlayer?1:-1));
   let spd=curBallSpeed();
-  const angerActive = isPlayer ? (pEff.anger>0) : (cEff.anger>0);
-  if(angerActive) spd*=1.6;             // +60%, not ×2-compounding-with-everything
+  if(smite)spd*=SMITE_MULT;
+  // Anger punishes the angry player: shots sent AT them travel at double speed
+  const receiverAngry = isPlayer ? (cEff.anger>0) : (pEff.anger>0);
+  if(receiverAngry) spd*=ANGER_MULT;
   spd=clamp(spd, BASE_SPD*0.5, BASE_SPD*4.5);
+  if(!isPlayer&&bossActive()&&!charityActive){const a=bossAim(b,dY);if(a!==null)angle=a;}
   b.vx=Math.sin(angle)*spd;
   b.vy=Math.cos(angle)*spd*dY;
+  b.spin=human?clamp(paddleVx*SPIN_K,-SPIN_MAX,SPIN_MAX):0;
   lastTouch=isPlayer?'player':'cpu';
   cpuAim.ball=null; // re-aim after every hit
+  return smite;
 }
+function smiteFX(b,isPlayer){spawnP(b.x,b.y,GOLD,16);spawnFT(b.x,b.y+(isPlayer?-18:18),'\u2726 Smite!',GOLD);sfx('smite');if(isPlayer)trigShk(5,150);}
 
 function hitsH(bx,by,pcx,py,pw2){return by+BALL_R>py&&by-BALL_R<py+PH&&bx+BALL_R>pcx-pw2/2&&bx-BALL_R<pcx+pw2/2;}
 
+// Faith pull per frame toward the faithful paddle (v1.9.0: ~2.5x stronger than before)
+function faithPull(dx){return Math.sign(dx)*Math.min(Math.abs(dx)*0.01,0.30);}
+function faithCurving(b){return (pEff.faith>0&&(playerAtBottom?b.vy>0:b.vy<0))||(cEff.faith>0&&(playerAtBottom?b.vy<0:b.vy>0));}
 function applyFaith(b,dtN){
   // Faith curves the ball toward the player paddle as it returns
   if(pEff.faith>0){
     const headingP=playerAtBottom?b.vy>0:b.vy<0;
-    if(headingP){const dx=st.p.cx-b.x;b.vx+=Math.sign(dx)*Math.min(Math.abs(dx)*0.004,0.12)*dtN;}
+    if(headingP)b.vx+=faithPull(st.p.cx-b.x)*dtN;
   }
   if(cEff.faith>0){
     const headingC=playerAtBottom?b.vy<0:b.vy>0;
-    if(headingC){const dx=st.c.cx-b.x;b.vx+=Math.sign(dx)*Math.min(Math.abs(dx)*0.004,0.12)*dtN;}
+    if(headingC)b.vx+=faithPull(st.c.cx-b.x)*dtN;
   }
 }
 
@@ -904,28 +1099,31 @@ function handleBallCollisions(b){
   // walls
   if(b.x<14+BALL_R){b.x=14+BALL_R;b.vx=Math.abs(b.vx);spawnP(14,b.y,'#ffffff',3);sfx('wall');}
   if(b.x>cw-14-BALL_R){b.x=cw-14-BALL_R;b.vx=-Math.abs(b.vx);spawnP(cw-14,b.y,'#ffffff',3);sfx('wall');}
+  if(barrier.on&&bounceBarrier(b,barrier.x)){spawnP(b.x,b.y,'#d8c48a',4);sfx('wall');}
   const ppw=playerPW(),epw=cpuPW(),py=playerY(),cy2=cpuY();
   // player paddle
   if(hitsH(b.x,b.y,st.p.cx,py,ppw)){
-    b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R; paddleHitBall(b,st.p.cx,ppw,true);
-    spawnP(b.x,b.y,'#ffffff',8);trigShk(3,120);sfx('paddle');
+    b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R; const sm=paddleHitBall(b,st.p.cx,ppw,true,st.p.vx,true);
+    spawnP(b.x,b.y,'#ffffff',8);trigShk(3,120);sfx('paddle');if(sm)smiteFX(b,true);
     onTurnHit(); return true;
   }
   // player hope
-  if(hope.active){const hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;paddleHitBall(b,hope.cx,BASE_PW*0.6,true);spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
+  if(hope.active){const hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;if(paddleHitBall(b,hope.cx,BASE_PW*0.6,true))smiteFX(b,true);spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
   // cpu paddle — no screen shake on CPU hits (keeps CPU side smooth)
   if(hitsH(b.x,b.y,st.c.cx,cy2,epw)){
-    b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R; paddleHitBall(b,st.c.cx,epw,false);
-    spawnP(b.x,b.y,'#aaaaaa',6);sfx('paddle');
+    b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R; const sm=paddleHitBall(b,st.c.cx,epw,false,st.c.vx,twoPlayer);
+    spawnP(b.x,b.y,'#aaaaaa',6);sfx('paddle');if(sm)smiteFX(b,false);
     onTurnHit(); return true;
   }
   // cpu hope
-  if(cHope.active){const hy=playerAtBottom?cy2+PH+10:cy2-PH-10;if(hitsH(b.x,b.y,cHope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R;paddleHitBall(b,cHope.cx,BASE_PW*0.6,false);spawnP(b.x,b.y,'#aaaaaa',8);sfx('paddle');onTurnHit();return true;}}
+  if(cHope.active){const hy=playerAtBottom?cy2+PH+10:cy2-PH-10;if(hitsH(b.x,b.y,cHope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R;if(paddleHitBall(b,cHope.cx,BASE_PW*0.6,false))smiteFX(b,false);spawnP(b.x,b.y,'#aaaaaa',8);sfx('paddle');onTurnHit();return true;}}
   return false;
 }
 
 function onTurnHit(){
   if(charityActive)return; // B3: the 20 Charity balls don't count as turns or add speed
+  st.rally++; if(st.rally>stats.longestRally)stats.longestRally=st.rally;
+  if(st.rally>=6&&!pulseTO)pulseTick();
   turnSpeedMult=Math.min(turnSpeedMult+SPEED_PER_TURN,4.0);
   decrementTurns();
   // collect orbs at ball position handled separately each frame
@@ -935,6 +1133,7 @@ function onTurnHit(){
 function endRound(playerWon){
   if(roundEnding)return; roundEnding=true;
   clearAllEffects(); refreshMotif();
+  if(playerWon)stats.roundsWon++;else stats.roundsLost++;
   if(playerWon){st.scoreP++;st.streak++;roundSpeedMult=Math.min(roundSpeedMult+0.01,2.0);}
   else{st.scoreC++;st.streak=0;}
   updateHUD();
@@ -947,22 +1146,23 @@ function endRound(playerWon){
     if(st.stage>=TOTAL_STAGES){
       // Won the final stage → VICTORY
       st.matchOver=true; st.matchWon=true; st.running=false;
-      sfx('win'); spawnP(CW()/2,CH()/2,GOLD,40); stopMotif();
+      sfx('win'); spawnP(CW()/2,CH()/2,GOLD,40); stopMotif(); stopDrone();
       showQuote(`\u2726 Virtue Prevails! You conquered all ${TOTAL_STAGES} stages.`);
       draw(); return;
     }
     // Advance to next stage via the epic stage-intro screen
-    st.running=false;
+    st.running=false; st.blessing=null;
     sfx('win'); spawnP(CW()/2,CH()/2,GOLD,26);
-    setTimeout(()=>showStageIntro(st.stage+1), 600);
+    setTimeout(()=>offerBlessing(st.stage+1), 600);
     return;
   }
 
   if(cpuTakesStage){
     // Lost the stage → game over, back to start
     st.matchOver=true; st.matchWon=false; st.running=false;
-    sfx('lose'); spawnP(CW()/2,CH()/2,CRIM,30); stopMotif();
-    showQuote(`Vice Prevails\u2026 ${twoPlayer?'Player 2':'The CPU'} took Stage ${st.stage}. Your journey ends here.`);
+    sfx('lose'); spawnP(CW()/2,CH()/2,CRIM,30); stopMotif(); stopDrone();
+    const victor=twoPlayer?'Player 2':(bossActive()?'The Adversary':'The CPU');
+    showQuote(`Vice Prevails\u2026 ${victor} took Stage ${st.stage}. Your journey ends here.`);
     draw(); return;
   }
 
@@ -991,12 +1191,15 @@ function predictTrajectory(b){
   const goingToPlayer = playerAtBottom ? vy>0 : vy<0;
   if(!goingToPlayer) return null; // only show when ball comes toward us
   const faithDyn = pEff.faith>0; // dynamic bend
+  let sp=b.spin||0, bx=barrier.x, bvx=barrier.vx;
   let guard=0;
   while(guard++<2000){
     // step
     const stepF=2.0;
-    if(faithDyn){const dx=st.p.cx-x; vx+=Math.sign(dx)*Math.min(Math.abs(dx)*0.004,0.12)*stepF*0.5;}
+    if(faithDyn&&(playerAtBottom?vy>0:vy<0))vx+=faithPull(st.p.cx-x)*stepF;
+    vx+=sp*stepF; sp*=Math.pow(SPIN_DECAY,stepF);
     x+=vx*stepF; y+=vy*stepF;
+    if(barrier.on){[bx,bvx]=barrierStep(bx,bvx,stepF);const o={x,y,vx,vy};if(bounceBarrier(o,bx)){({x,y,vx,vy}=o);pts.push({x,y});}}
     // walls
     if(x<14+BALL_R){x=14+BALL_R;vx=Math.abs(vx);pts.push({x,y});}
     if(x>cw-14-BALL_R){x=cw-14-BALL_R;vx=-Math.abs(vx);pts.push({x,y});}
@@ -1010,7 +1213,8 @@ function predictTrajectory(b){
 
 /* ══ DRAW ══ */
 function drawX(cx,cy,s,color,alpha){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=s*0.13;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(cx,cy-s/2);ctx.lineTo(cx,cy+s/2);ctx.stroke();ctx.beginPath();ctx.moveTo(cx-s*0.33,cy-s*0.11);ctx.lineTo(cx+s*0.33,cy-s*0.11);ctx.stroke();ctx.restore();}
-function drawCourt(){const cw=CW(),ch=CH();ctx.save();ctx.strokeStyle='rgba(201,168,76,0.17)';ctx.lineWidth=1.4;ctx.setLineDash([]);ctx.strokeRect(5,5,cw-10,ch-10);ctx.restore();ctx.save();ctx.strokeStyle='rgba(201,168,76,0.15)';ctx.lineWidth=1.1;ctx.setLineDash([5,9]);ctx.beginPath();ctx.moveTo(14,ch/2);ctx.lineTo(cw-14,ch/2);ctx.stroke();ctx.restore();drawX(cw/2,ch/2,26,GOLD,0.12);}
+function drawCourt(){const cw=CW(),ch=CH();ctx.save();ctx.strokeStyle='rgba(201,168,76,0.17)';ctx.lineWidth=1.4;ctx.setLineDash([]);ctx.strokeRect(5,5,cw-10,ch-10);ctx.restore();ctx.save();ctx.strokeStyle='rgba(201,168,76,0.15)';ctx.lineWidth=1.1;ctx.setLineDash([5,9]);ctx.beginPath();ctx.moveTo(14,ch/2);ctx.lineTo(cw-14,ch/2);ctx.stroke();ctx.restore();drawX(cw/2,ch/2,26,GOLD,0.12);drawBarrier();}
+function drawBarrier(){if(!barrier.on)return;const by=barrierY(),x=barrier.x-barrier.w/2;ctx.save();ctx.shadowColor='rgba(201,168,76,0.5)';ctx.shadowBlur=10;ctx.fillStyle='rgba(122,95,26,0.85)';ctx.beginPath();ctx.roundRect(x,by,barrier.w,barrier.h,3);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='rgba(201,168,76,0.8)';ctx.lineWidth=1;ctx.stroke();ctx.restore();}
 
 function drawTracker(){
   if(!prudenceTrackerOn()) return;
@@ -1033,10 +1237,11 @@ function drawTracker(){
 function drawPaddle(cx,y,pw2,isPlayer,isHope){
   const x=cx-pw2/2; const ef=isPlayer?pEff:cEff;
   ctx.save();
-  if(!isHope&&ef.gluttony>0){const k=stunPulse();ctx.shadowColor=CRIM;ctx.shadowBlur=10+8*k;ctx.fillStyle=`rgba(${Math.round(120+72*k)},${Math.round(20+37*k)},${Math.round(20+23*k)},0.9)`;}
+  if(!isHope&&stunned(isPlayer?'player':'cpu')){const k=stunPulse();ctx.shadowColor=CRIM;ctx.shadowBlur=10+8*k;ctx.fillStyle=`rgba(${Math.round(120+72*k)},${Math.round(20+37*k)},${Math.round(20+23*k)},0.9)`;}
   else if(!isHope&&ef.fortitude>0){ctx.shadowColor=GOLD;ctx.shadowBlur=14;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
   else if(!isHope&&ef.pride>0){ctx.shadowColor=CRIM;ctx.shadowBlur=14;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
   else if(!isHope&&ef.lust>0){ctx.shadowColor='#800080';ctx.shadowBlur=10;ctx.fillStyle=isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.9)';}
+  else if(!isPlayer&&!isHope&&bossActive()){ctx.shadowColor=CRIM;ctx.shadowBlur=16;ctx.fillStyle='rgba(150,30,25,0.95)';}
   else{ctx.fillStyle=isHope?'rgba(201,168,76,0.8)':(isPlayer?'rgba(230,215,170,0.95)':'rgba(200,200,210,0.85)');}
   ctx.beginPath();ctx.roundRect(x,y,pw2,PH,4);ctx.fill();
   ctx.restore();
@@ -1044,12 +1249,21 @@ function drawPaddle(cx,y,pw2,isPlayer,isHope){
 
 // D1: smooth 1 Hz pulse, well under the 3-flashes-per-second guideline
 function stunPulse(){return 0.5+0.5*Math.sin(Date.now()/1000*Math.PI*2);}
-function drawStunText(){
-  if(!(pEff.gluttony>0)) return;
-  const py=playerY();
-  ctx.save();ctx.fillStyle=`rgba(255,80,80,${(0.6+0.35*stunPulse()).toFixed(2)})`;ctx.font='bold 13px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('STUNNED',st.p.cx,playerAtBottom?py-18:py+PH+18);ctx.restore();
+/* Gluttony: a draining ring above the stunned paddle shows how long is left */
+function drawStunTimer(who){
+  const left=stunLeft(who); if(left<=0)return;
+  const isP=who==='player', cx=isP?st.p.cx:st.c.cx, py=isP?playerY():cpuY();
+  const above=isP?playerAtBottom:!playerAtBottom;
+  const y=above?py-16:py+PH+16, r=7, frac=left/STUN_MS;
+  ctx.save();
+  ctx.lineWidth=2.6;ctx.strokeStyle='rgba(192,57,43,0.25)';ctx.beginPath();ctx.arc(cx-30,y,r,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle=`rgba(255,90,80,${(0.75+0.2*stunPulse()).toFixed(2)})`;ctx.lineCap='round';
+  ctx.beginPath();ctx.arc(cx-30,y,r,-Math.PI/2,-Math.PI/2+Math.PI*2*frac);ctx.stroke();
+  ctx.fillStyle='rgba(255,90,80,0.95)';ctx.font='bold 12px ui-sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('STUNNED',cx-18,y);
+  ctx.restore();
 }
+function drawStunText(){drawStunTimer('player');drawStunTimer('cpu');}
 
 /* Effect pip dots near a paddle: filled = remaining, hollow = used */
 function drawPips(cx,paddleY,isPlayer){
@@ -1060,7 +1274,8 @@ function drawPips(cx,paddleY,isPlayer){
   const debuffKeys=VICE_KEYS.concat('shrink');
   let turns=0, color=GOLD, total=EFFECT_TURNS;
   let found=false;
-  for(const k of debuffKeys){if(ef[k]>0){turns=ef[k];color=CRIM;total=(k==='gluttony'?2:EFFECT_TURNS);found=true;break;}}
+  if(stunned(isPlayer?'player':'cpu'))return; // the stun timer ring takes this spot
+  for(const k of debuffKeys){if(ef[k]>0){turns=ef[k];color=CRIM;total=EFFECT_TURNS;found=true;break;}}
   if(!found)for(const k of OWN_VIRTUE_KEYS){if(ef[k]>0){turns=ef[k];color=GOLD;total=EFFECT_TURNS;found=true;break;}}
   if(!found&&myHope.active){turns=myHope.turns;color=GOLD;total=EFFECT_TURNS;found=true;}
   if(!found)return;
@@ -1079,8 +1294,8 @@ function drawPips(cx,paddleY,isPlayer){
 }
 
 function drawBall(b){
-  const speed=Math.hypot(b.vx,b.vy), ang=Math.atan2(b.vy,b.vx);
-  for(let i=0;i<b.trail.length;i++){const t=b.trail[i],frac=i/b.trail.length,a=frac*0.32;ctx.beginPath();ctx.arc(t.x,t.y,BALL_R*frac*0.7,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fill();}
+  const speed=Math.hypot(b.vx,b.vy), ang=Math.atan2(b.vy,b.vx), fc=faithCurving(b);
+  for(let i=0;i<b.trail.length;i++){const t=b.trail[i],frac=i/b.trail.length,a=frac*(fc?0.6:0.32);ctx.beginPath();ctx.arc(t.x,t.y,BALL_R*frac*(fc?0.9:0.7),0,Math.PI*2);ctx.fillStyle=fc?`rgba(201,168,76,${a})`:`rgba(255,255,255,${a})`;ctx.fill();}
   ctx.save();ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1.4;ctx.lineCap='round';
   for(let k=-1;k<=1;k++){const off=k*BALL_R*0.55;const px=b.x+Math.cos(ang+Math.PI/2)*off,py=b.y+Math.sin(ang+Math.PI/2)*off;const len=Math.min(28,speed*3.2);ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-Math.cos(ang)*len,py-Math.sin(ang)*len);ctx.stroke();}
   ctx.restore();
@@ -1091,7 +1306,8 @@ function drawPups(){
 }
 function drawParticles(){for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 function drawFloats(){ctx.textAlign='center';ctx.textBaseline='middle';for(const f of floats){ctx.globalAlpha=f.life;ctx.fillStyle=f.color;ctx.font='bold 13px Palatino,Georgia,serif';ctx.fillText(f.txt,f.x,f.y);}ctx.globalAlpha=1;}
-function drawStreak(){if(st.streak<2)return;ctx.fillStyle=GOLD;ctx.font='bold 11px Palatino,Georgia,serif';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`\u2726 ${st.streak} in a row`,12,12);}
+function drawStreak(){if(st.blessing){ctx.fillStyle='rgba(201,168,76,0.7)';ctx.font='10px ui-sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('\u2726 '+blessingName(),CW()-12,12);}
+  if(st.streak<2)return;ctx.fillStyle=GOLD;ctx.font='bold 11px Palatino,Georgia,serif';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`\u2726 ${st.streak} in a row`,12,12);}
 
 function draw(){
   const cw=CW(),ch=CH(); ctx.clearRect(0,0,cw,ch);
@@ -1107,7 +1323,7 @@ function draw(){
   drawPips(st.p.cx,playerY(),true);
   drawPips(st.c.cx,cpuY(),false);
   ctx.font='9px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(201,168,76,0.4)';
-  ctx.fillText('YOU',st.p.cx,playerAtBottom?ch-9:9);ctx.fillText(twoPlayer?'P2':'CPU',st.c.cx,playerAtBottom?9:ch-9);
+  ctx.fillText('YOU',st.p.cx,playerAtBottom?ch-9:9);ctx.fillText(twoPlayer?'P2':(bossActive()?'THE ADVERSARY':'CPU'),st.c.cx,playerAtBottom?9:ch-9);
   if(charityActive){for(const b of charityBalls)drawBall(b);}else if(balls[0])drawBall(balls[0]);
   drawPups();drawParticles();drawFloats();drawStreak();drawStunText();
   if(!st.running&&st.showMsg&&!st.matchOver){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,cw,ch);}
@@ -1121,21 +1337,23 @@ function draw(){
 let last=performance.now();
 function loop(now){
   if(!st.running){draw();return;}
-  const dt=Math.min(now-last,32); last=now; const dtN=dt/FPS_TARGET;
+  const dt=Math.min(now-last,32); last=now; const dtN=dt/FPS_TARGET; gameT+=dt;
   shk.t=Math.max(0,shk.t-dt);
   particles=particles.filter(p=>p.life>0);
   for(const p of particles){p.x+=p.vx*dtN;p.y+=p.vy*dtN;p.vy+=0.06*dtN;p.life-=0.022;p.r*=0.97;}
   floats=floats.filter(f=>f.life>0);
   for(const f of floats){f.y+=f.vy*dtN;f.life-=0.016;}
   puTimer+=dt;
-  if(puTimer>puInt&&pups.filter(p=>!p.done).length<3){spawnPup();puTimer=0;puInt=5500+Math.random()*4000;}
+  const sd=stageData();
+  if(puTimer>puInt&&pups.filter(p=>!p.done).length<sd.maxOrbs){spawnPup();puTimer=0;puInt=(5500+Math.random()*4000)/sd.orbRate;}
+  moveBarrier(dtN);
   movePlayers(dtN);
   const cw=CW(),ch=CH();
 
   /* CHARITY MODE */
   if(charityActive){
     for(const b of charityBalls){
-      applyFaith(b,dtN);
+      applyFaith(b,dtN);applySpin(b,dtN);
       // Prudence+Charity: slow incoming balls (toward owner) to 75%
       let f=dtN;
       if(prudenceSlowsIncoming()){
@@ -1153,7 +1371,7 @@ function loop(now){
       return true;
     });
     // orb collection by any charity ball
-    for(const p of pups){if(p.done)continue;for(const b of charityBalls){const dx=b.x-p.x,dy=b.y-p.y;if(Math.sqrt(dx*dx+dy*dy)<p.r+BALL_R){p.done=true;applyOrb(p.orb,p.x,p.y,p.isVice);break;}}}
+    for(const p of pups){if(p.done)continue;for(const b of charityBalls){const dx=b.x-p.x,dy=b.y-p.y;if(Math.sqrt(dx*dx+dy*dy)<p.r+BALL_R){p.done=true;applyOrb(p.orb,p.x,p.y,p.isVice,b);break;}}}
     pups=pups.filter(p=>!p.done);
     if(charityBalls.length===0&&charityActive&&!charityResolved){
       charityResolved=true;charityActive=false;
@@ -1168,11 +1386,11 @@ function loop(now){
 
   /* NORMAL BALL */
   const b=balls[0]; if(!b){draw();if(st.running)requestAnimationFrame(loop);return;}
-  applyFaith(b,dtN);
+  applyFaith(b,dtN);applySpin(b,dtN);
   const scored=advanceBallSwept(b,dtN);
 
   // orb collection
-  if(lastTouch)for(const p of pups){if(p.done)continue;const dx=b.x-p.x,dy=b.y-p.y;if(Math.sqrt(dx*dx+dy*dy)<p.r+BALL_R){p.done=true;applyOrb(p.orb,p.x,p.y,p.isVice);}}
+  if(lastTouch)for(const p of pups){if(p.done)continue;const dx=b.x-p.x,dy=b.y-p.y;if(Math.sqrt(dx*dx+dy*dy)<p.r+BALL_R){p.done=true;applyOrb(p.orb,p.x,p.y,p.isVice,b);}}
   pups=pups.filter(p=>!p.done);
 
   // scoring
