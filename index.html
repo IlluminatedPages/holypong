@@ -86,8 +86,14 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 .bless-btn{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:11px;cursor:pointer;background:var(--dimgold);border:1px solid rgba(201,168,76,0.45);color:var(--gold);font-family:'Palatino Linotype',Palatino,Georgia,serif;font-size:15px;}
 .bless-btn small{display:block;margin-top:3px;font-family:ui-sans-serif;font-size:11px;color:#cfc8b6;line-height:1.45;}
 .bless-btn:active{background:rgba(201,168,76,0.3);}
+.qhead{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--panel2);}
+.qhead h2{font-size:18px;margin-bottom:3px;}
+.qhead.lost h2{color:#e07060;}
+.qhead-sub{font-family:ui-sans-serif;font-size:12px;color:#cfc8b6;line-height:1.5;}
+.obtn.hidden{display:none;}
 .qsum{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--panel2);}
 .qsum.hidden{display:none;}
+.qsum h2{display:none;}
 .qsum .verdict{font-family:ui-sans-serif;font-size:12px;color:var(--gold);margin:2px 0 10px;}
 .qsum table{width:100%;border-collapse:collapse;font-family:ui-sans-serif;font-size:12px;}
 .qsum td{padding:5px 0;border-top:1px solid rgba(255,255,255,0.05);color:#cfc8b6;}
@@ -169,7 +175,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
       <span class="brand-ver js-ver"></span>
     </div>
     <div class="chips">
-      <div class="chip gc"><b id="roundLabel">Stage 1 · Rd 1</b></div>
+      <div class="chip gc"><b id="roundLabel">Stage 1 · Round 1 of 5</b></div>
       <div class="chip">You <b id="sP">0</b> – <b id="sC">0</b> <span id="oppLbl">CPU</span></div>
       <div class="chip gc">Streak <b id="streak">0</b></div>
       <div class="chip" id="dchip">Normal</div>
@@ -209,13 +215,13 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
     </div>
     <div class="key-hint">
       <code class="k">&#8592;&#8594;</code> move &nbsp;<span id="p2hint" style="display:none"><code class="k">A</code><code class="k">D</code> P2 &nbsp;</span><code class="k">P</code> pause &nbsp;<code class="k">Space</code> start<br/>
-      Quote: <code class="k">&#8593;</code> continue &nbsp;<code class="k">&#8595;</code>/<code class="k">R</code> reset
+      Card: <code class="k">&#8593;</code> continue &nbsp;<code class="k">R</code> restart stage &nbsp;<code class="k">Q</code> quit
     </div>
   </div>
   <div id="mobCtrl">
     <div class="mob-btns">
       <button class="mbtn" id="mPause">&#9208; Pause</button>
-      <button class="mbtn" id="mReset">&#8635; Reset</button>
+      <button class="mbtn" id="mReset">&#8635; Restart</button>
       <button class="mbtn" id="mMute">&#9835; Music</button>
       <button class="mbtn" id="mDiff">Difficulty</button>
       <button class="mbtn" id="mGuide">&#128218; Guide</button>
@@ -230,14 +236,16 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 
 <div class="overlay" id="qOv">
   <div class="ocard">
+    <div class="qhead" id="qHead"><h2 id="qHeadT"></h2><div class="qhead-sub" id="qHeadS"></div></div>
     <div class="qsum hidden" id="qSum"></div>
-    <h2 id="qTitle">From the Catechism</h2>
+    <h2 id="qTitle" class="minor">From the Catechism</h2>
     <blockquote id="qText">&#8230;</blockquote>
     <button class="qmore" id="qMore" type="button">Read full paragraph</button>
     <div class="ref" id="qRef"></div>
     <div class="rinfo" id="qRound"></div>
     <div class="obtns">
-      <button class="obtn" id="qReset">Reset</button>
+      <button class="obtn" id="qQuit">Quit</button>
+      <button class="obtn" id="qReset">Restart Stage</button>
       <button class="obtn p" id="qCont">Next Round</button>
     </div>
   </div>
@@ -304,8 +312,8 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 
 <div class="overlay" id="resetOv">
   <div class="ocard" style="text-align:center;max-width:360px;">
-    <h2>Restart from Stage 1?</h2>
-    <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin:6px 0 4px;">Your current run will be lost.</p>
+    <h2 id="resetTitle">Restart this stage?</h2>
+    <p id="resetText" style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin:6px 0 4px;">You'll go back to round 1 of this stage.</p>
     <div class="obtns" style="justify-content:center;">
       <button class="obtn" id="resetNo">Cancel</button>
       <button class="obtn p" id="resetYes">Restart</button>
@@ -420,7 +428,7 @@ new ResizeObserver(()=>{if(!gateOpen)fitHiDPI();}).observe(canvas);
 const PH=14, BASE_PW=110, BALL_R=9;
 const BASE_SPD=7.0;          // Speed3 — noticeably faster than the old 4.8
 const EFFECT_TURNS=4, SPEED_PER_TURN=0.015;
-const TOTAL_STAGES=5, ROUNDS_TO_WIN_STAGE=3; // best-of-5: first to 3 round wins takes the stage
+const TOTAL_STAGES=5, ROUNDS_TO_WIN_STAGE=3, MAX_ROUNDS=5; // best-of-5: first to 3 round wins takes the stage
 
 /* ══ ORBS ══ */
 const VIRTUES=[
@@ -810,19 +818,19 @@ function showStageIntro(nextStage){
   draw();
 }
 function beginStage(){
-  cancelStageTimer();
+  cancelStageTimer(); roundBanner=ROUND_BANNER_MS;
   g('stageIntro').classList.add('hidden');
   resumeAC(); updateDrone();
   startOrResume();
 }
 
 function updateHUD(){
-  g('roundLabel').textContent=`Stage ${st.stage} \u00B7 Rd ${st.round}`;
+  g('roundLabel').textContent=`Stage ${st.stage} \u00B7 Round ${st.round} of ${MAX_ROUNDS}`;
   g('sP').textContent=st.scoreP; g('sC').textContent=st.scoreC; g('oppLbl').textContent=twoPlayer?'P2':(bossActive()?'Adversary':'CPU');
   g('streak').textContent=st.streak;
   g('dchip').textContent=difficulty.charAt(0).toUpperCase()+difficulty.slice(1);
 }
-g('startPulseBtn').addEventListener('click',()=>{resumeAC();g('startOverlay').classList.add('hidden');startOrResume();});
+g('startPulseBtn').addEventListener('click',()=>{resumeAC();roundBanner=ROUND_BANNER_MS;g('startOverlay').classList.add('hidden');startOrResume();});
 g('stageBeginBtn').addEventListener('click',()=>{beginStage();});
 
 /* ══ BUTTONS ══ */
@@ -857,7 +865,8 @@ let wasRunning=false;
 function pauseForOverlay(){wasRunning=st.running;if(st.running){st.running=false;draw();}}
 function resumeAfterOverlay(){if(wasRunning&&!st.matchOver)startOrResume();}
 g('qCont').addEventListener('click',()=>{hideOv('qOv');continueAfterQuote();});
-g('qReset').addEventListener('click',()=>{if(st.matchOver){hideOv('qOv');backToStart();}else askReset();});
+g('qReset').addEventListener('click',()=>askConfirm('restart'));
+g('qQuit').addEventListener('click',()=>{if(st.matchOver){hideOv('qOv');backToStart();}else askConfirm('quit');}); // a finished run quits without asking
 g('guideClose').addEventListener('click',()=>{hideOv('guideOv');resumeAfterOverlay();});
 g('guideOv').addEventListener('click',e=>{if(e.target===g('guideOv')){hideOv('guideOv');resumeAfterOverlay();}});
 g('diffMidOk').addEventListener('click',()=>{hideOv('diffMidOv');updateHUD();resumeAfterOverlay();});
@@ -878,27 +887,44 @@ function fillSummary(box,verdict){
 }
 let curQuote=null;
 g('qMore').addEventListener('click',()=>{if(!curQuote)return;const qt=g('qText'),full=!qt.classList.contains('full');qt.classList.toggle('full',full);qt.textContent=full?curQuote.t:curQuote.x;g('qMore').textContent=full?'Show excerpt':'Read full paragraph';});
+/* Round / stage card. mode: 'round' | 'stageWon' | 'victory' | 'lost' */
+let cardMode='round';
+function setCard(mode,head,sub){
+  cardMode=mode; g('qHeadT').textContent=head; g('qHeadS').textContent=sub||'';
+  g('qHead').classList.toggle('lost',mode==='lost'||(mode==='round'&&/lost$/.test(head)));
+  const next=st.stage+1;
+  g('qCont').textContent={round:`Next Round \u00B7 Round ${st.round} of ${MAX_ROUNDS}`,stageWon:`Continue to Stage ${next}`,victory:'Play Again',lost:'Play Again'}[mode];
+  g('qReset').classList.toggle('hidden',mode!=='round');
+}
 function showQuote(roundMsg){
   const q=nextCCC();
   g('qTitle').textContent='From the Catechism';
   curQuote=q; const qt=g('qText'); qt.textContent=q.x; qt.classList.remove('full');
   const more=g('qMore'); more.textContent='Read full paragraph'; more.classList.toggle('hidden',q.x===q.t);
   g('qRef').textContent=q.r; g('qRound').textContent=roundMsg||'';
-  const sum=g('qSum'); sum.classList.toggle('hidden',!st.matchOver); g('qTitle').classList.toggle('minor',st.matchOver);
+  const sum=g('qSum'); sum.classList.toggle('hidden',!st.matchOver);
   if(st.matchOver){fillSummary(sum,roundMsg);g('qRound').textContent='';}
-  if(st.matchOver){g('qCont').textContent='Play Again';g('qReset').textContent='Back to Start';}
-  else{g('qCont').textContent='Next Round';g('qReset').textContent='Reset';}
   showOv('qOv');
 }
-function continueAfterQuote(){if(st.matchOver){newMatch();return;}if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;applyRoundBlessing();}startOrResume();}
+function continueAfterQuote(){if(st.matchOver){newMatch();return;}
+  if(cardMode==='stageWon'){st.blessing=null;offerBlessing(st.stage+1);return;}
+  roundBanner=ROUND_BANNER_MS;if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;applyRoundBlessing();}startOrResume();}
 function startOrResume(){g('startOverlay').classList.add('hidden');st.paused=false;if(!st.running&&!st.matchOver){st.running=true;st.showMsg=false;last=performance.now();requestAnimationFrame(loop);}}
 function introVisible(){return !g('stageIntro').classList.contains('hidden');}
 function togglePause(){if(st.matchOver||introVisible())return;st.running=!st.running;st.paused=!st.running;if(st.running){last=performance.now();requestAnimationFrame(loop);}else draw();}
 /* E2: reset asks first, so a stray tap can't wipe the run */
-let resetFromQuote=false;
-function askReset(){resetFromQuote=ovVisible('qOv');if(resetFromQuote)hideOv('qOv');else pauseForOverlay();if(introVisible())cancelStageTimer();showOv('resetOv');}
+let resetFromQuote=false, confirmKind='restart';
+function askConfirm(kind){
+  confirmKind=kind;
+  g('resetTitle').textContent=kind==='quit'?'Quit to the start?':`Restart Stage ${st.stage}?`;
+  g('resetText').textContent=kind==='quit'?'Your current run will end.':'You\u2019ll go back to round 1 of this stage.';
+  g('resetYes').textContent=kind==='quit'?'Quit':'Restart Stage';
+  resetFromQuote=ovVisible('qOv');if(resetFromQuote)hideOv('qOv');else pauseForOverlay();if(introVisible())cancelStageTimer();showOv('resetOv');
+}
+function askReset(){askConfirm('restart');}
+function restartStage(){st.matchOver=false;st.matchWon=false;showStageIntro(st.stage);}
 function closeReset(confirmed){hideOv('resetOv');
-  if(confirmed){newMatch();return;}
+  if(confirmed){if(confirmKind==='quit')backToStart();else restartStage();return;}
   if(resetFromQuote){showOv('qOv');return;}
   if(introVisible()){showStageIntro(st.stage);return;}
   resumeAfterOverlay();}
@@ -922,12 +948,14 @@ window.addEventListener('keydown',e=>{
   if(ovVisible('guideOv')||ovVisible('diffMidOv'))return;
   if(ovVisible('qOv')){
     if(k==='arrowup'||k===' '){hideOv('qOv');continueAfterQuote();return;}
-    if(k==='arrowdown'||k==='r'){if(st.matchOver){hideOv('qOv');backToStart();}else askReset();return;}
+    if((k==='arrowdown'||k==='r')&&cardMode==='round'){askConfirm('restart');return;}
+    if(k==='q'||k==='escape'){g('qQuit').click();return;}
     return;
   }
   if(introVisible()){if(k===' ')beginStage();return;}
   if(k==='p'){togglePause();return;}
   if(k==='r'){doReset();return;}
+  if(k==='q'){askConfirm('quit');return;}
   if(k===' '){resumeAC();startOrResume();return;}
   keys.add(k);
 });
@@ -1147,13 +1175,17 @@ function endRound(playerWon){
       // Won the final stage → VICTORY
       st.matchOver=true; st.matchWon=true; st.running=false;
       sfx('win'); spawnP(CW()/2,CH()/2,GOLD,40); stopMotif(); stopDrone();
+      setCard('victory',`Stage ${st.stage} complete \u2014 Victory`,`You won the stage ${st.scoreP}\u2013${st.scoreC}.`);
       showQuote(`\u2726 Virtue Prevails! You conquered all ${TOTAL_STAGES} stages.`);
-      draw(); return;
+      draw(); roundEnding=false; return;
     }
-    // Advance to next stage via the epic stage-intro screen
-    st.running=false; st.blessing=null;
+    // Stage complete → card, then blessing, then the next stage intro
+    st.running=false;
     sfx('win'); spawnP(CW()/2,CH()/2,GOLD,26);
-    setTimeout(()=>offerBlessing(st.stage+1), 600);
+    const nd=STAGE_DATA[st.stage];
+    setCard('stageWon',`Stage ${st.stage} complete`,`You won the stage ${st.scoreP}\u2013${st.scoreC}. Ready for Stage ${st.stage+1}: ${nd.name}.`);
+    showQuote('');
+    draw(); roundEnding=false;
     return;
   }
 
@@ -1162,20 +1194,26 @@ function endRound(playerWon){
     st.matchOver=true; st.matchWon=false; st.running=false;
     sfx('lose'); spawnP(CW()/2,CH()/2,CRIM,30); stopMotif(); stopDrone();
     const victor=twoPlayer?'Player 2':(bossActive()?'The Adversary':'The CPU');
+    setCard('lost',`Stage ${st.stage} lost`,`${victor} won the stage ${st.scoreC}\u2013${st.scoreP}.`);
     showQuote(`Vice Prevails\u2026 ${victor} took Stage ${st.stage}. Your journey ends here.`);
-    draw(); return;
+    draw(); roundEnding=false; return;
   }
 
   // Stage continues — next round
-  st.round++;
+  const played=st.round;
+  st.round++; updateHUD();
   initPos();
   st.pendingDir=playerWon?(playerAtBottom?-1:1):(playerAtBottom?1:-1);
   st.running=false;
   const speedPct=Math.round((roundSpeedMult-1)*100);
   const atCap=roundSpeedMult>=2.0;
   let rmsg;
-  if(playerWon)rmsg=atCap?`Round won! (${st.scoreP}\u2013${st.scoreC}) \u00B7 ball speed at max`:`Round won! (${st.scoreP}\u2013${st.scoreC}) \u00B7 ball speed +${speedPct}%`;
-  else rmsg=`${oppName()} took the round (${st.scoreP}\u2013${st.scoreC}). First to ${ROUNDS_TO_WIN_STAGE} wins the stage.`;
+  rmsg=playerWon?(atCap?'Ball speed at max.':`Ball speed +${speedPct}%.`):'';
+  const stakes=st.scoreC===ROUNDS_TO_WIN_STAGE-1&&st.scoreP===ROUNDS_TO_WIN_STAGE-1?' Next round decides the stage.':
+               st.scoreC===ROUNDS_TO_WIN_STAGE-1?' One more loss ends your journey.':
+               st.scoreP===ROUNDS_TO_WIN_STAGE-1?' One more win takes the stage.':'';
+  setCard('round',`Round ${played} ended \u2014 You ${playerWon?'won':'lost'}`,
+    `Stage ${st.stage} \u00B7 You ${st.scoreP}\u2013${st.scoreC} ${oppName()} \u00B7 first to ${ROUNDS_TO_WIN_STAGE} wins the stage.${stakes}`);
   showQuote(rmsg);
   roundEnding=false;
 }
@@ -1325,7 +1363,7 @@ function draw(){
   ctx.font='9px ui-sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(201,168,76,0.4)';
   ctx.fillText('YOU',st.p.cx,playerAtBottom?ch-9:9);ctx.fillText(twoPlayer?'P2':(bossActive()?'THE ADVERSARY':'CPU'),st.c.cx,playerAtBottom?9:ch-9);
   if(charityActive){for(const b of charityBalls)drawBall(b);}else if(balls[0])drawBall(balls[0]);
-  drawPups();drawParticles();drawFloats();drawStreak();drawStunText();
+  drawPups();drawParticles();drawFloats();drawStreak();drawStunText();drawRoundBanner();
   if(!st.running&&st.showMsg&&!st.matchOver){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,cw,ch);}
   if(st.paused&&!st.running){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,cw,ch);
     ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=GOLD;ctx.font='bold 22px Palatino,Georgia,serif';ctx.fillText('Paused',cw/2,ch/2-10);
@@ -1334,10 +1372,18 @@ function draw(){
 }
 
 /* ══ MAIN LOOP ══ */
+const ROUND_BANNER_MS=1400; let roundBanner=0;
+function drawRoundBanner(){
+  if(roundBanner<=0)return; const cw=CW(),ch=CH(),a=Math.min(1,roundBanner/400);
+  ctx.save();ctx.globalAlpha=a;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle=GOLD;ctx.font='bold 26px Palatino,Georgia,serif';ctx.fillText(`Round ${st.round} of ${MAX_ROUNDS}`,cw/2,ch*0.38);
+  ctx.fillStyle='rgba(200,185,140,0.85)';ctx.font='12px ui-sans-serif';ctx.fillText(`Stage ${st.stage} \u00B7 You ${st.scoreP}\u2013${st.scoreC} ${oppName()}`,cw/2,ch*0.38+26);
+  ctx.restore();
+}
 let last=performance.now();
 function loop(now){
   if(!st.running){draw();return;}
-  const dt=Math.min(now-last,32); last=now; const dtN=dt/FPS_TARGET; gameT+=dt;
+  const dt=Math.min(now-last,32); last=now; const dtN=dt/FPS_TARGET; gameT+=dt; roundBanner=Math.max(0,roundBanner-dt);
   shk.t=Math.max(0,shk.t-dt);
   particles=particles.filter(p=>p.life>0);
   for(const p of particles){p.x+=p.vx*dtN;p.y+=p.vy*dtN;p.vy+=0.06*dtN;p.life-=0.022;p.r*=0.97;}
