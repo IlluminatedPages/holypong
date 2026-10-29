@@ -295,7 +295,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
         <li><b>3 &middot; The Crucible</b> &mdash; three in four orbs are vices.</li>
         <li><b>4 &middot; The Gauntlet</b> &mdash; a drifting barrier at mid-court.</li>
         <li><b>5 &middot; The Final Reckoning</b> &mdash; The Adversary: vices its shots pass through land on you, and virtues it touches are destroyed.</li>
-        <li>After each stage you win, choose one of two blessings for the next stage.</li>
+        <li>After each stage you win, choose one of two sacramentals as a blessing for the whole of the next stage: The Rosary, Blessed Candle, St. Benedict Medal, Brown Scapular or Miraculous Medal.</li>
       </ul>
     </div>
     <div class="obtns"><button class="obtn p" id="guideClose">Close Guide</button></div>
@@ -582,7 +582,7 @@ function applyOrb(orb,x,y,isVice,ball){
     if(!isVice){spawnP(x,y,CRIM,14);spawnFT(x,y,'\u2717 '+orb.label+' destroyed',CRIM);sfx('vice');return;}
     who='player';
   }
-  if(isVice&&who==='player'&&st.wardReady){st.wardReady=false;spawnP(x,y,GOLD,14);spawnFT(x,y,'\u2726 Warded \u2014 '+orb.label,GOLD);sfx('virtue');return;}
+  if(isVice&&who==='player'&&wardLeft()>0){spawnP(x,y,GOLD,14);spawnFT(x,y,'\u2726 Warded \u2014 '+orb.label,GOLD);sfx('virtue');return;}
   if(who==='player')tally(isVice?stats.vices:stats.virtues,orb.label);
   const mine = who==='player' ? pEff : cEff;     // bank of the toucher
   const other= who==='player' ? cEff : pEff;     // opponent bank
@@ -644,7 +644,7 @@ function triggerGreed(who){
 /* Derived paddle / speed stats */
 // C3: Fortitude doubles the paddle, capped at 45% of the court width
 function fortPW(){return Math.min(BASE_PW*2,CW()*0.45);}
-function playerPW(){return basePlayerPW()*(st.blessing==='steadfast'?1.1:1);}
+function playerPW(){const m={scapular:1.1,medal:2}[st.blessing]||1, w=basePlayerPW()*m;return m>1?Math.min(w,Math.max(basePlayerPW(),CW()*0.45)):w;}
 function basePlayerPW(){if(prideOn('player'))return BASE_PW*0.25;if(pEff.fortitude>0)return fortPW();if(pEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
 function cpuPW(){if(prideOn('cpu'))return BASE_PW*0.25;if(cEff.fortitude>0)return fortPW();if(cEff.shrink>0)return BASE_PW*0.5;return BASE_PW;}
 // C1: human paddles keep pace with the ball, as the CPU already does
@@ -659,7 +659,7 @@ function oppName(){return twoPlayer?'Player 2':(bossActive()?'The Adversary':'CP
 /* Prudence combos:
    - alone or with Faith → trajectory tracker (tracker on)
    - with Charity → tracker OFF, incoming balls to player slow to 75% */
-function prudenceTrackerOn(){return pEff.prudence>0 && !charityActive;}
+function prudenceTrackerOn(){return (pEff.prudence>0||st.blessing==='candle') && !charityActive;}
 function prudenceSlowsIncoming(){return pEff.prudence>0 && charityActive;}
 
 /* ══ SPEED MULTIPLIERS ══ */
@@ -683,12 +683,16 @@ function tally(bag,label){bag[label]=(bag[label]||0)+1;}
 function sumBag(bag){return Object.values(bag).reduce((a,b)=>a+b,0);}
 
 /* ══ BLESSINGS — chosen after each stage win, last for the next stage ══ */
+// Blessings are sacramentals. Each lasts for the whole of the next stage.
 const BLESSINGS=[
-  {id:'hope',     name:'Hope\u2019s Start',      desc:'An assist paddle for the first 2 turns of each round.'},
-  {id:'steadfast',name:'Steadfast',               desc:'Your paddle is 10% wider.'},
-  {id:'watch',    name:'Watchfulness',            desc:'Prudence\u2019s tracker for the first 2 turns of each round.'},
-  {id:'ward',     name:'Ward of Temperance',      desc:'The first vice to strike you each round has no effect.'},
+  {id:'rosary',  name:'The Rosary',          desc:'Prayer at your side \u2014 a small assist paddle (30% width) for the whole stage.'},
+  {id:'candle',  name:'Blessed Candle',      desc:'A light on the path \u2014 the ball\u2019s trajectory is shown for the whole stage.'},
+  {id:'benedict',name:'St. Benedict Medal',  desc:'Protection at the outset \u2014 no vice can touch you for the first 60 seconds of play.'},
+  {id:'scapular',name:'Brown Scapular',      desc:'A mantle of devotion \u2014 your paddle is 10% wider for the whole stage.'},
+  {id:'medal',   name:'Miraculous Medal',    desc:'Under Mary\u2019s mantle \u2014 your paddle is twice as wide for the whole stage (up to 45% of the court).'},
 ];
+const BENEDICT_MS=60000;
+function wardLeft(){return Math.max(0,st.wardUntil-gameT);}
 function blessingName(){const b=BLESSINGS.find(x=>x.id===st.blessing);return b?b.name:'';}
 function offerBlessing(nextStage){
   const pick=shuf(BLESSINGS).slice(0,2), box=g('blessOpts'); box.innerHTML='';
@@ -701,12 +705,11 @@ function offerBlessing(nextStage){
 let blessPick=[];
 function chooseBlessing(id,nextStage){st.blessing=id;hideOv('blessOv');sfx('virtue');showStageIntro(nextStage);}
 // applied at the start of every round
-function applyRoundBlessing(){
-  st.wardReady=st.blessing==='ward';
-  if(st.blessing==='hope'){hope.active=true;hope.turns=2;hope.cx=st.p.cx;}
-  if(st.blessing==='watch'){pEff.prudence=2;}
-  refreshMotif();
-}
+// applied when a stage begins (or is restarted)
+function applyStageBlessing(){st.wardUntil=st.blessing==='benedict'?gameT+BENEDICT_MS:0;}
+// The Rosary's assist paddle shares the Hope assist slot; a Hope orb upgrades it to full size while it lasts
+function playerAssistOn(){return hope.active||st.blessing==='rosary';}
+function playerAssistW(){return BASE_PW*(hope.active?0.6:0.3);}
 
 /* ══ MUSIC LAYERS — a drone from Stage 3, and a pulse that quickens with long rallies ══ */
 let drone=null, pulseTO=null;
@@ -725,7 +728,7 @@ function pulseTick(){pulseTO=null;if(musicMuted||!st.running||st.rally<6)return;
 let playerAtBottom=true, twoPlayer=false;
 let balls=[];
 let roundEnding=false;
-const st={p:{cx:0,vx:0},c:{cx:0,vx:0},rally:0,smiteStreak:0,blessing:null,wardReady:false,scoreP:0,scoreC:0,streak:0,round:1,stage:1,running:false,showMsg:true,paused:false,matchOver:false,matchWon:false,pendingDir:0};
+const st={p:{cx:0,vx:0},c:{cx:0,vx:0},rally:0,smiteStreak:0,blessing:null,wardUntil:0,scoreP:0,scoreC:0,streak:0,round:1,stage:1,running:false,showMsg:true,paused:false,matchOver:false,matchWon:false,pendingDir:0};
 
 function playerY(){return playerAtBottom?CH()-22-PH:22;}
 function cpuY(){return playerAtBottom?22:CH()-22-PH;}
@@ -735,7 +738,7 @@ function resetBall(dY=(Math.random()<.5?-1:1)){turnSpeedMult=1.0;st.rally=0;st.s
   balls=[makeBall(dY)];charityBalls=[];charityActive=false;charityResolved=false;}
 
 function newMatch(){
-  st.scoreP=0;st.scoreC=0;st.streak=0;st.round=1;st.stage=1;st.matchOver=false;st.matchWon=false;st.blessing=null;st.wardReady=false;
+  st.scoreP=0;st.scoreC=0;st.streak=0;st.round=1;st.stage=1;st.matchOver=false;st.matchWon=false;st.blessing=null;st.wardUntil=0;
   resetStats(); stopDrone(); hideOv('blessOv');
   roundSpeedMult=1.0; clearAllEffects();
   pups=[];particles=[];floats=[];puTimer=0;lastTouch='player';roundEnding=false;
@@ -806,7 +809,7 @@ function showStageIntro(nextStage){
   g('stageKicker').textContent=boss?`STAGE ${nextStage} \u00B7 THE ADVERSARY`:`STAGE ${nextStage}`;
   g('stageTaunt').textContent=boss?data.taunt:''; g('stageTaunt').classList.toggle('hidden',!boss);
   g('stageRule').textContent=(data.boss&&twoPlayer)?'Final stage. No quarter given.':data.rule;
-  setupBarrier(); applyRoundBlessing();
+  setupBarrier(); applyStageBlessing();
   g('stageBless').textContent=st.blessing?`Blessing: ${blessingName()}`:''; g('stageBless').classList.toggle('hidden',!st.blessing);
   g('stageIntro').classList.remove('hidden');
   g('startOverlay').classList.add('hidden');
@@ -912,7 +915,7 @@ function showQuote(roundMsg){
 }
 function continueAfterQuote(){if(st.matchOver){newMatch();return;}
   if(cardMode==='stageWon'){st.blessing=null;offerBlessing(st.stage+1);return;}
-  roundBanner=ROUND_BANNER_MS;if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;applyRoundBlessing();}startOrResume();}
+  roundBanner=ROUND_BANNER_MS;if(st.pendingDir!==0){resetBall(st.pendingDir);st.pendingDir=0;}startOrResume();}
 function startOrResume(){g('startOverlay').classList.add('hidden');st.paused=false;if(!st.running&&!st.matchOver){st.running=true;st.showMsg=false;last=performance.now();requestAnimationFrame(loop);}}
 function introVisible(){return !g('stageIntro').classList.contains('hidden');}
 function togglePause(){if(st.matchOver||introVisible())return;st.running=!st.running;st.paused=!st.running;if(st.running){last=performance.now();requestAnimationFrame(loop);}else draw();}
@@ -1022,10 +1025,10 @@ function movePlayers(dtN){
   st.p.cx=clamp(st.p.cx,ppw/2+4,cw-ppw/2-4);
 
   // Player Hope assist
-  if(hope.active){
+  if(playerAssistOn()){
     const tb=nearestThreatBallForPlayer();
     if(tb){const d=tb.x-hope.cx;hope.cx+=Math.sign(d)*Math.min(Math.abs(d),6*paceScale()*dtN);}
-    const hopePW=BASE_PW*0.6; hope.cx=clamp(hope.cx,hopePW/2+10,cw-hopePW/2-10);
+    const hopePW=playerAssistW(); hope.cx=clamp(hope.cx,hopePW/2+10,cw-hopePW/2-10);
   }
 
   if(twoPlayer){
@@ -1151,7 +1154,7 @@ function handleBallCollisions(b){
     onTurnHit(); return true;
   }
   // player hope
-  if(hope.active){const hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;{const sm=paddleHitBall(b,hope.cx,BASE_PW*0.6,true);if(sm)smiteFX(b,true);trackSmite(sm);}spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
+  if(playerAssistOn()){const hw=playerAssistW(),hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,hw)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;{const sm=paddleHitBall(b,hope.cx,hw,true);if(sm)smiteFX(b,true);trackSmite(sm);}spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
   // cpu paddle — no screen shake on CPU hits (keeps CPU side smooth)
   if(hitsH(b.x,b.y,st.c.cx,cy2,epw)){
     b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R; const sm=paddleHitBall(b,st.c.cx,epw,false,st.c.vx,twoPlayer);
@@ -1361,7 +1364,8 @@ function drawPups(){
 }
 function drawParticles(){for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 function drawFloats(){ctx.textAlign='center';ctx.textBaseline='middle';for(const f of floats){ctx.globalAlpha=f.life;ctx.fillStyle=f.color;ctx.font='bold 13px Palatino,Georgia,serif';ctx.fillText(f.txt,f.x,f.y);}ctx.globalAlpha=1;}
-function drawStreak(){if(st.blessing){ctx.fillStyle='rgba(201,168,76,0.7)';ctx.font='10px ui-sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('\u2726 '+blessingName(),CW()-12,12);}
+function drawStreak(){if(st.blessing){let t='\u2726 '+blessingName();if(st.blessing==='benedict'){const l=Math.ceil(wardLeft()/1000);t+=l>0?` \u00B7 0:${String(l).padStart(2,'0')}`:' \u00B7 spent';}
+    ctx.fillStyle='rgba(201,168,76,0.75)';ctx.font='10px ui-sans-serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText(t,CW()-12,12);}
   if(st.streak<2)return;ctx.fillStyle=GOLD;ctx.font='bold 11px Palatino,Georgia,serif';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`\u2726 ${st.streak} in a row`,12,12);}
 
 function draw(){
@@ -1371,7 +1375,7 @@ function draw(){
   drawCourt();
   drawTracker(); // Prudence trajectory (under paddles/ball)
   drawPaddle(st.p.cx,playerY(),playerPW(),true,false);
-  if(hope.active){const hopePW=BASE_PW*0.6;const hy=playerAtBottom?playerY()-PH-10:playerY()+PH+10;drawPaddle(hope.cx,hy,hopePW,true,true);}
+  if(playerAssistOn()){const hy=playerAtBottom?playerY()-PH-10:playerY()+PH+10;drawPaddle(hope.cx,hy,playerAssistW(),true,true);}
   drawPaddle(st.c.cx,cpuY(),cpuPW(),false,false);
   if(cHope.active){const hopePW=BASE_PW*0.6;const hy=playerAtBottom?cpuY()+PH+10:cpuY()-PH-10;drawPaddle(cHope.cx,hy,hopePW,false,true);}
   // pip counters
