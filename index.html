@@ -947,6 +947,26 @@ function backToStart(){
 }
 
 const keys=new Set();
+/* ══ DEVELOPER SHORTCUTS (hidden; for testing) ══
+   Shift+N        win the current stage (normal stage-complete → blessing flow)
+   Shift+1 … 5    jump straight to that stage's intro
+   Mobile: tap the version badge in the top bar 5 times quickly to win the current stage */
+function devCloseOverlays(){['qOv','resetOv','guideOv','diffMidOv','blessOv'].forEach(hideOv);cancelStageTimer();g('stageIntro').classList.add('hidden');g('startOverlay').classList.add('hidden');}
+function devSkipStage(){
+  if(gateOpen)return; devCloseOverlays();
+  st.running=false; st.matchOver=false; roundEnding=false;
+  st.scoreP=ROUNDS_TO_WIN_STAGE-1; spawnFT(CW()/2,CH()/2-40,'DEV \u00B7 stage skipped','#8fb0e0');
+  endRound(true);
+}
+function devJumpStage(n){if(gateOpen)return;devCloseOverlays();st.running=false;st.matchOver=false;st.matchWon=false;roundEnding=false;showStageIntro(n);}
+window.addEventListener('keydown',e=>{
+  if(gateOpen||!e.shiftKey)return;
+  if(e.code==='KeyN'){e.preventDefault();e.stopImmediatePropagation();devSkipStage();return;}
+  const m=/^Digit([1-5])$/.exec(e.code);
+  if(m){e.preventDefault();e.stopImmediatePropagation();devJumpStage(+m[1]);}
+},true);
+let devTaps=[];
+document.querySelector('.brand-ver').addEventListener('click',()=>{const now=Date.now();devTaps=devTaps.filter(t=>now-t<2000);devTaps.push(now);if(devTaps.length>=5){devTaps=[];devSkipStage();}});
 window.addEventListener('keydown',e=>{
   if(gateOpen)return; const k=e.key.toLowerCase();
   if(['arrowleft','arrowright','arrowup','arrowdown','p','r',' '].includes(k))e.preventDefault();
