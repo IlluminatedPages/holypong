@@ -339,7 +339,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
 (()=>{
 'use strict';
 /* ══ VERSION — change this one line for each release ══ */
-const VERSION='1.9.0';
+const VERSION='1.9.1';
 document.title=`The Field of Battle · v${VERSION}`;
 document.querySelectorAll('.js-ver').forEach(el=>{el.textContent='v'+VERSION;});
 const GOLD='#c9a84c', CRIM='#c0392b';
@@ -1167,22 +1167,25 @@ function handleBallCollisions(b){
   if(b.x>cw-14-BALL_R){b.x=cw-14-BALL_R;b.vx=-Math.abs(b.vx);spawnP(cw-14,b.y,'#ffffff',3);sfx('wall');}
   if(barrier.on&&bounceBarrier(b,barrier.x)){spawnP(b.x,b.y,'#d8c48a',4);sfx('wall');}
   const ppw=playerPW(),epw=cpuPW(),py=playerY(),cy2=cpuY();
+  // v1.9.1: paddles are one-way — they only return a ball travelling toward their own side,
+  // so a ball can never get trapped bouncing between a paddle and the back of its assist
+  const towardP=playerAtBottom?b.vy>0:b.vy<0;
   // player paddle
-  if(hitsH(b.x,b.y,st.p.cx,py,ppw)){
+  if(towardP&&hitsH(b.x,b.y,st.p.cx,py,ppw)){
     b.y=playerAtBottom?py-BALL_R:py+PH+BALL_R; const sm=paddleHitBall(b,st.p.cx,ppw,true,st.p.vx,true);
     spawnP(b.x,b.y,'#ffffff',8);trigShk(3,120);sfx('paddle');if(sm)smiteFX(b,true);trackSmite(sm);
     onTurnHit(); return true;
   }
   // player hope
-  if(playerAssistOn()){const hw=playerAssistW(),hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,hw)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;{const sm=paddleHitBall(b,hope.cx,hw,true);if(sm)smiteFX(b,true);trackSmite(sm);}spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
+  if(towardP&&playerAssistOn()){const hw=playerAssistW(),hy=playerAtBottom?py-PH-10:py+PH+10;if(hitsH(b.x,b.y,hope.cx,hy,hw)){b.y=playerAtBottom?hy-BALL_R:hy+PH+BALL_R;{const sm=paddleHitBall(b,hope.cx,hw,true);if(sm)smiteFX(b,true);trackSmite(sm);}spawnP(b.x,b.y,'#ffffff',8);sfx('paddle');onTurnHit();return true;}}
   // cpu paddle — no screen shake on CPU hits (keeps CPU side smooth)
-  if(hitsH(b.x,b.y,st.c.cx,cy2,epw)){
+  if(!towardP&&hitsH(b.x,b.y,st.c.cx,cy2,epw)){
     b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R; const sm=paddleHitBall(b,st.c.cx,epw,false,st.c.vx,twoPlayer);
     spawnP(b.x,b.y,'#aaaaaa',6);sfx('paddle');if(sm)smiteFX(b,false);
     onTurnHit(); return true;
   }
   // cpu hope
-  if(cHope.active){const hy=playerAtBottom?cy2+PH+10:cy2-PH-10;if(hitsH(b.x,b.y,cHope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?cy2+PH+BALL_R:cy2-BALL_R;if(paddleHitBall(b,cHope.cx,BASE_PW*0.6,false))smiteFX(b,false);spawnP(b.x,b.y,'#aaaaaa',8);sfx('paddle');onTurnHit();return true;}}
+  if(!towardP&&cHope.active){const hy=playerAtBottom?cy2+PH+10:cy2-PH-10;if(hitsH(b.x,b.y,cHope.cx,hy,BASE_PW*0.6)){b.y=playerAtBottom?hy+PH+BALL_R:hy-BALL_R;if(paddleHitBall(b,cHope.cx,BASE_PW*0.6,false))smiteFX(b,false);spawnP(b.x,b.y,'#aaaaaa',8);sfx('paddle');onTurnHit();return true;}}
   return false;
 }
 
