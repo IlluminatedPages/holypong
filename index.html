@@ -259,7 +259,7 @@ code.k{background:var(--panel);padding:1px 5px;border-radius:5px;border:1px soli
   <div class="ocard">
     <h2>&#10013; Virtues &amp; Vices Guide</h2>
     <p style="font-family:ui-sans-serif;font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
-      Orbs appear mid-court and activate when the ball passes through them after it has been hit — a fresh serve passes straight through. Effects apply to the <strong style="color:var(--gold);">last player who touched the ball</strong> and last <strong>4 turns</strong>. Pip dots (&#9679;&#9679;&#9679;&#9675;) by your paddle show turns remaining. Ball speed grows +1.5% per hit. Hit with the <strong>edge</strong> of your paddle to <strong style="color:var(--gold);">Smite</strong> — a faster, sharper shot — and move your paddle as you hit to put curve on the ball.
+      Orbs appear mid-court and activate when the ball passes through them after it has been hit — a fresh serve passes straight through. Effects apply to the <strong style="color:var(--gold);">last player who touched the ball</strong> and last <strong>4 turns</strong>. Pip dots (&#9679;&#9679;&#9679;&#9675;) by your paddle show turns remaining. Ball speed grows +3% per hit. Hit with the <strong>edge</strong> of your paddle to <strong style="color:var(--gold);">Smite</strong> — a faster, sharper shot — and move your paddle as you hit to put curve on the ball.
     </p>
     <div class="gsec">
       <h3>&#9830; Virtues &#8212; Gold Orbs</h3>
@@ -419,6 +419,9 @@ function aiSpd(){return aiBaseSpd()*stageAiBonus()*Math.max(1,turnSpeedMult*0.85
 // so offsets beyond that are genuine misjudgements.
 function aiErr(){return{easy:90,normal:66,hard:36}[difficulty]*(bossActive()?0.7:1);} // the boss misjudges less
 const cpuAim={ball:null,off:0};
+// v1.9.1: the CPU misjudges more as a rally drags on — from the 8th hit its aim error grows 7% per hit, up to double
+const RALLY_ERR_START=8, RALLY_ERR_STEP=0.07, RALLY_ERR_MAX=2.0;
+function rallyErrScale(){return Math.min(RALLY_ERR_MAX,1+Math.max(0,st.rally-RALLY_ERR_START)*RALLY_ERR_STEP);}
 function setupDP(rowId){g(rowId).querySelectorAll('.diff-btn').forEach(b=>{b.addEventListener('click',()=>{difficulty=b.dataset.d;syncDP();updateHUD();});});}
 function syncDP(){['dpGate','dpMid'].forEach(id=>{g(id)&&g(id).querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.d===difficulty));});g('ddGate').textContent=DDESC[difficulty];g('ddMid').textContent=DDESC[difficulty];}
 setupDP('dpGate'); setupDP('dpMid');
@@ -437,7 +440,7 @@ new ResizeObserver(()=>{if(!gateOpen)fitHiDPI();}).observe(canvas);
 /* ══ CONSTANTS ══ */
 const PH=14, BASE_PW=110, BALL_R=9;
 const BASE_SPD=7.0;          // Speed3 — noticeably faster than the old 4.8
-const EFFECT_TURNS=4, SPEED_PER_TURN=0.015;
+const EFFECT_TURNS=4, SPEED_PER_TURN=0.03; // v1.9.1: ball speeds up twice as fast within a rally (was 0.015)
 const TOTAL_STAGES=5, ROUNDS_TO_WIN_STAGE=3, MAX_ROUNDS=5; // best-of-5: first to 3 round wins takes the stage
 
 /* ══ ORBS ══ */
@@ -1086,7 +1089,7 @@ function movePlayers(dtN){
     // CPU AI — FIX: tracks nearest threatening ball, works in Charity too
     const epw=cpuPW();
     const tb=nearestThreatBallForCPU();
-    if(tb!==cpuAim.ball){cpuAim.ball=tb;cpuAim.off=(Math.random()*2-1)*aiErr();}
+    if(tb!==cpuAim.ball){cpuAim.ball=tb;cpuAim.off=(Math.random()*2-1)*aiErr()*rallyErrScale();}
     const target=tb?tb.x+cpuAim.off:cw/2;
     const d=target-st.c.cx;
     st.c.cx+=Math.sign(d)*Math.min(Math.abs(d),cpuMSpd()*dtN);
